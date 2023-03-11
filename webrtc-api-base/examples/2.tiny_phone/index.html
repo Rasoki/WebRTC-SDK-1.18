@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--
+   Tutorial
+   Tiny phone.
+-->
+<html>
+
+<head>
+    <title>WebRTC tiny phone</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="phone.css">
+    <link rel="icon" href="favicon.png">
+	
+    <script defer src="../../js/ac_webrtc.min.js"></script>
+    <script defer src="config.js"></script>
+    <script defer src="phone.js"></script>
+</head>
+
+<body onload="documentIsReady()">
+    <!-- Check that browser is not IE -->
+    <script>
+        var ua = window.navigator.userAgent;
+        if (ua.indexOf('MSIE ') > 0 || ua.indexOf('Trident/') > 0) {
+            alert("Internet Explorer is not supported. Please use Chrome or Firefox");
+        }
+    </script>
+
+    <!--
+        HTML components of simple GUI
+    -->
+    <div id="status_line">
+    </div>
+
+    <!-- All panels are hidden, except one  -->
+    <div id="panels">
+        <div id="setting_panel" class="panel">
+            <form id="setting" onsubmit="event.preventDefault()">
+                <fieldset>
+                    <legend>Account</legend>
+                    <input class="account" type="text" name="user" size="30" placeholder="user name" title="User name"
+                        autocomplete="account name" required>
+                    <input class="account" type="text" name="display_name" size="30" placeholder="display name"
+                        title="Optional display name" autocomplete="account display-name">
+                    <input class="account" type="password" name="password" size="30" placeholder="password"
+                        title="User password" autocomplete="account password" required>
+                    <input class="account" type="text" name="auth_user" size="30"
+                        placeholder="optional authorization name" title="Optional authorization name"
+                        autocomplete="account auth-name">
+                </fieldset>
+            </form>
+            <button id="login_btn" title="Login">Login</button>
+        </div>
+
+        <div id="dialer_panel" class="panel">
+            <button id="settings_btn" title="Settings">Settings</button>
+            <fieldset>
+                <legend>call</legend>
+                <form id="call_form" onsubmit="event.preventDefault()">
+                    <input type="text" class="input" name="call_to">
+                    <input id="audio_call_btn" type="button" value="Audio">
+                    <input id="video_call_btn" type="button" value="Video">
+                </form>
+            </fieldset>
+        </div>
+
+        <div id="outgoing_call_panel" class="panel">
+            <fieldset>
+                <legend>calling</legend>
+                <p id="outgoing_call_user"></p>
+                <p id="outgoing_call_progress"></p>
+                <br>
+                <input id="cancel_outgoing_call_btn" type="button" value="Cancel">
+            </fieldset>
+        </div>
+
+        <div id="incoming_call_panel" class="panel">
+            <fieldset>
+                <legend>incoming call</legend>
+                <p id="incoming_call_user"></p>
+                <br>
+                <input id="accept_audio_btn" type="button" value="Accept audio">
+                <input id="accept_video_btn" type="button" value="Accept video">
+                <input id="reject_btn" type="button" value="Reject"> <br>
+            </fieldset>
+        </div>
+
+        <div id="call_established_panel" class="panel">
+            <div>
+                <fieldset>
+                    <legend>open call</legend>
+                    <p id="call_established_user"></p>
+                    <br>
+                    <input id="hangup_btn" type="button" value="Hangup">
+                    <br>
+                    <input id="mute_audio_btn" type="button" value="Mute">
+                    <span id="video_controls_span">
+                    <input id="mute_video_btn" type="button" value="Mute video">
+                    <span>Hide local video</span>
+                    <input type="checkbox" id="hide_local_video_ckb">
+                    </span>
+                </fieldset>
+            </div>
+        </div>
+    </div>
+
+    <div id="video_view">
+        <video id="local_video" autoplay playsinline></video>
+        <video id="remote_video" autoplay playsinline></video>
+    </div>
+</body>
+
+</html>

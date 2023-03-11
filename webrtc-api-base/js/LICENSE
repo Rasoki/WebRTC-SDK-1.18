@@ -1,0 +1,51 @@
+AudioCodes Web SDK 
+Copyright AudioCodes Ltd
+
+Programmer: Igor Kolosov
+Copyright (c) 2021 AudioCodes Ltd. All rights reserved.
+
+based on:
+
+JsSIP
+https://github.com/versatica/JsSIP
+
+Author: José Luis Millán <jmillan@aliax.net>
+Core Developer: Iñaki Baz Castillo <ibc@aliax.net>
+Copyright (c) 2012-2015 José Luis Millán - Versatica <https://github.com/versatica/>
+
+The MIT License
+-----------------------------------------------------------
+Provided with the SDK example: "6.phone_prototype_oauth" depends:
+
+file: keycloak.js – Keycloak server adapter:
+
+https://github.com/keycloak/keycloak
+
+Apache License 2.0
+
+-----------------------------------------------------------
+Provided with the SDK example: "7.phone_prototype_acd" depends:
+
+file: pjxml.js is modified XML parser:
+
+Pure JavaScript XML parser
+Scott Means
+https://github.com/smeans/pjxml
+
+The MIT license
+-----------------------------------------------------------
+Provided with the SDK example: "9.phone_prototype_citrix" depends
+of Citrix WebRTC Redirection SDK. 
+
+https://www.citrix.com/
+
+Copyright Citrix Systems Inc.
+-----------------------------------------------------------
+utils.js AudioPlayer2
+
+convertor AudioBuffer to WAV format taken from project
+Matt Diamond
+https://github.com/mattdiamond/Recorderjs
+
+MIT lisence
+-----------------------------------------------------------

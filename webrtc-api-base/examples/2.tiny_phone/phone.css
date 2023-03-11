@@ -1,0 +1,24 @@
+        #panels {
+            max-width: 500px;
+        }
+        
+        .panel {
+            display: none;
+        }
+        
+        #setting .account {
+            background: #A5ECEC;
+        }
+        
+        #hangup_btn,
+        #cancel_outgoing_call_btn,
+        #reject_btn {
+            background-color: lightpink;
+            border-color: lightpink;
+        }
+        
+        #accept_audio_btn,
+        #accept_video_btn {
+            background-color: lightgreen;
+            border-color: lightgreen;
+        }

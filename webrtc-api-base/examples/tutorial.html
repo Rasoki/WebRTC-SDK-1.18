@@ -1,0 +1,3405 @@
+<html>
+<head>
+    <title>Examples description</title>
+    <meta charset="UTF-8" />
+    <meta name="description" content="AudioCodes WebRTC Web SDK tutorial/examples">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+@import url('https://fonts.googleapis.com/css?family=Itim');
+
+body {
+     font-family: 'Itim', cursive;
+     background-color: rgb(226,226,214);
+     margin: auto;
+     width: 50em;
+}
+
+h2 {
+   padding: 0.8em 0 0.1em 0;
+}
+</style>
+
+<link rel="icon" href="favicon.png">
+
+</head>
+
+<body>
+
+
+<h1>AudioCodes WebRTC examples</h1>
+<h2>Preface</h2>
+<p>
+AudioCodes Ltd. provides a WebRTC Gateway functionality on its Session Border Controllers
+that supports interworking of calls from clients using WebRTC to standard Voice over IP networks.
+</p>
+
+<p>
+For browser-based WebRTC clients, AudioCodes provides a JavaScript API library (the “WebRTC Client SDK”)
+to easily integrate WebRTC calling with AudioCodes SBCs.
+</p>
+
+<p>
+AudioCodes provides a similar SDK also for native iOS and Android applications.
+</p>
+
+<p>
+The WebRTC Client SDK for web, is based on an open-source JavaScript SIP library named “JsSIP”.<br>
+In this document we demonstrate how to use the API to write WebRTC client phones.
+</p>
+
+<p>
+WebRTC is one of the components of HTML 5 which is implemented on modern browsers.
+</p>
+
+<p>
+Currently the WebRTC Client SDK supports:<br>
+Google Chrome, new Microsoft Edge, Mozilla Firefox, Apple Safari for Mac.
+<br>
+Partial supports: iOS Safari and Chrome for Android.
+</p>
+
+<p>
+The WebRTC Client SDK uses modern JavaScript version.<br>
+Used JavaScript ES2015 features: class, let, for of, promises and ES2017 features: async/await.
+</p>
+
+<p>
+This document is built as a series of fully functional examples.
+</p>
+
+<p>
+For educational purposes, the examples use pure JavaScript, working directly with the browser’s HTML DOM elements (without using libraries such as jquery).<br>
+The WebRTC API can only be used when a web page is loaded securely from an <strong>HTTPS</strong> site.
+</p>
+
+<p>
+If you would like to see these examples while operating, you should be able to upload them
+to your HTTPS site as well as have access to an AudioCodes SIP SBC server,
+configured with WebRTC and session licenses.<br>
+Another option at your disposal is the use of examples already demonstrated in this website.<br>
+You may reconfigure the SBC field with your own server.
+</p>
+
+<p>
+View the source code with a browser’s developer tools: Ctrl+Shift+I (Chrome, Firefox) or Alt+Cmd+I (Safari) and select sources
+</p>
+
+<p>
+Each example is single HTML page with JavaScript.<br>
+Exiting the page is the same as stopping the program in Windows.<br>
+Reloading the page will restart the program.<br>
+</p>
+
+<p>
+In an HTML file, the following is used:
+
+<pre><code>
+&lt;body onload = "documentIsReady()"&gt;
+</code></pre>
+
+When the page is loaded, the documentIsReady function is called.<br>
+documentIsReady() function plays the same role as main() in C or java languages.
+</p>
+
+<h2>Ensure that your browser support WebRTC API</h2>
+<p><a href="0.webrtc_check_support">Check that your browser supports WebRTC</a></p>
+<pre><code>
+function documentIsReady() {
+    if( !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia )
+      guiError("WebRTC is not supported");
+    } else {
+      guiInfo("WebRTC is supported");
+    }
+}
+</code></pre>
+
+<p>Here the result will be shown in an HTML page, instead of a JavaScript console.</p>
+<p>Sometime opening the JavaScript console is difficult (e.g. Chrome for Android), or impossible (e.g. Chrome for iPad)</p>
+
+<p>
+This simple example is suitable for learning how to see the source code in the browser.<br>
+Please run the example in a Chrome browser (this is similar in Firefox)
+</p>
+
+<p>
+Press Ctrl/Shift/I to open the developer tools<br>
+Select 'Sources' tab<br>
+Select 'Page' sub-tab<br>
+<br>
+You can see that sdk/webrtc-api-base/examples/0.webrtc_check_support URL contains:
+<ul>
+<li>index.html</li>
+<li>phone.js</li>
+</ul>
+
+Click the 1st and the 2nd files, and you'll see the source code.<br>
+<br>
+If the JavaScript code is compressed you can click the {} icon to expand.<br>
+Later we'll describe how to <a href="#debugging_javascript">debug JavaScript code</a>,
+or locally change it using <a href="#chrome_local_overrides">'overrides'</a>
+</p>
+
+<p>
+In phone.js you can see how to get a reference to an HTML element defined in index.html,<br>
+and how to change style and innerHTML values.
+</p>
+<pre><code>
+function guiError(text) { guiStatus(text, 'Pink'); }
+function guiInfo(text) { guiStatus(text, 'Aquamarine'); }
+
+function guiStatus(text, color) {
+    let line = document.getElementById('status_line');
+    line.setAttribute('style', `background-color: ${color}`);
+    line.innerHTML = text;
+}
+</code></pre>
+
+<h2>Checking available devices (camera, microphone)</h2>
+<p><a href="1.webrtc_check_devices">Check for available  devices</a></p>
+<p>To make a phone call you need to at least have a microphone and headphones.<br>
+A video call also requires a web camera.<br>
+In this example, we check for the presence of these peripherals.</p>
+<p>You can see here that WebRTC API uses the more modern callbacks in the form of 'Promise'
+(.then .catch)</p>
+
+<pre><code>
+function documentIsReady() {
+    // Check devices: microphone must exist, camera is optional
+    checkAvailableDevices()
+        .then((camera) => {
+            let str = 'microphone is found'
+            if (camera)
+                str = 'microphone and camera are found'
+            guiInfo(str);
+            console.log(str)
+        })
+        .catch((e) => {
+            guiError(e);
+            console.log(e);
+        })
+}
+
+// Check WebRTC support. Check presence of microphone and camera.
+function checkAvailableDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+        return Promise.reject('WebRTC is not supported');
+    let cam = false,
+        mic = false,
+        spkr = false;
+    return navigator.mediaDevices.enumerateDevices()
+        .then((deviceInfos) => {
+            deviceInfos.forEach(function (d) {
+                console.log(d);  // print device info for debugging
+                switch (d.kind) {
+                    case 'videoinput':
+                        cam = true;
+                        break;
+                    case 'audioinput':
+                        mic = true;
+                        break;
+                    case 'audiooutput':
+                        spkr = true;
+                        break;
+                }
+            });
+            // Chrome supports 'audiooutput', Firefox and Safari do not support.
+            if (navigator.webkitGetUserMedia === undefined) { // Not Chrome
+                spkr = true;
+            }
+            if (!spkr)
+                return Promise.reject('Missing a speaker! Please connect one and reload');
+            if (!mic)
+                return Promise.reject('Missing a microphone! Please connect one and reload');
+
+            return Promise.resolve(cam);
+        });
+}
+</code></pre>
+
+<h2>Simple click to call phone</h2>
+
+<p>In this example, we start using the AudioCodes WebRTC API<br>
+<p>The click to call phone (for outgoing calls only), uses AudioCodes SBC anonymous user mode</p>
+<p>The phone call is initiated from an anonymous user to a registered user.<br>
+Note: an anonymous user cannot call another anonymous user.</p>
+
+<p>
+The phone doesn't ask the user for any information and does not save it in the browser.<br>
+In doing so, it can be safely used in public computers such as the ones available at airports, internet Cafes, or public libraries.
+</p>
+
+<p>
+To use this phone, a Web Master should insert a link to it in an HTML page.<br>
+The HTML page with the link may be in an HTTP or HTTPS site.<br>
+The phone page should be used in an HTTPS site.
+</p>
+
+<p><a href="2.click_to_call_phone/usage_1.html">Run click-to-call example (with HTML link)</a></p>
+<p><a href="2.click_to_call_phone/usage_2.html">Run click-to-call example (with HTML form)</a></p>
+<p><a href="2.click_to_call_phone/usage_3.html">Run click-to-call example (with speech recognition/synthesis)</a></p>
+
+<p>
+The 1st example uses an HTML link to jump to the phone.html page.<br>
+Callee user name or phone number set as URL parameter 'call'<br>
+<pre><code>
+ &lt;a href="https:// ...some site.../phone.html?call=SantaClaus"&gt;Click to call SantaClaus&lt;/a&gt;
+</code></pre>
+</p>
+
+<p>
+The 2nd example does about the same, but the HTML link string is built dynamically using an HTML form.
+</p>
+
+<p>
+The 3rd example is similar to the 2nd, but uses speech recognition.<br>
+While interesting, it is presently at an experimental stage of technology.<br>
+</p>
+
+<p>
+All three examples refer for the same web page: phone.html<br>
+Let's look at its source text<br>
+<br>
+Included JavaScript files:<br>
+<ul>
+<li><strong>ac_webrtc.min.js</strong> is a minimized JsSIP library concatenated with AudioCodes API wrapper.<br>
+    You can open the file in notepad++ (or your editor of choice) and see copyright information
+    belonging to JsSIP and AudioCodes.</li>
+<li><strong>phone.js</strong> is click-to-call phone code (250 lines)</li>
+<li><strong>config.js</strong> is a small file with SBC server configurations (5 lines)</li>
+</ul>
+</p>
+
+<p>
+The phone GUI is simple and consists of the following:
+<ul>
+<li>At the top of the page is the status line DIV</li>
+<li>In the middle of the page are three panels DIV<br>
+Only one selected panel is shown, the others are hidden</li>
+<li>At the bottom of the page are the video controls</li>
+</ul>
+</p>
+
+<p>
+Let's look at the source text of the phone.js
+</p>
+
+<p>
+The following global variables are used:
+<ul>
+<li>phone - instance of AudioCodesUA. Contains API methods. Singletone class</li>
+<li>activeCall - represents the current call</li>
+<li>callTo - phone number or user name getting from URL parameter 'call'</li>
+</ul>
+</p>
+
+<p>
+Let's look at the documentIsReady() implementation:
+<ul>
+<li>Set loggers. Reading the JavaScript console log we can understand what
+occurs during operations.</li>
+<li>Check WebRTC support</li>
+<li>Get "call" parameter from URL to set callTo variable</li>
+<li>GUI initialization. Set callback to a button's click event</li>
+<li>Check available devices. Checking that we have a microphone, headphones and a web camera</li>
+<li>Init SIP stack.
+    <ul>
+    <li>phone.setServerConfig() - set SBC address and parameters from config.js</li>
+    <li>phone.setAccount() - for click-to-call used 'Anonimous' user name, and empty string password</li>
+    <li>phone.setListeners() - set callbacks (listeners) for phone events</li>
+    <li>phone.init() - starts connecting to SBC</li>
+    </ul>
+</li>
+</ul>
+</p>
+
+<p>API usage, and events sequence</p>
+
+<ul>
+<li>Preparation: set server and account, event listeners</li>
+<li><strong>phone.init()</strong>. SIP stack initialization, and web socket connecting to SBC server.</li>
+<li><strong>callback loginStateChanged 'connected'</strong><br>
+    Called by SIP stack when SBC connection is established.<br>
+    If the SBC server is off-line, or you use an incorrect SBC address, you'll see the following callback:<br>
+    <strong>callback loginStateChanged 'disconnected'</strong></li>
+<li> <strong>phone.call()</strong> Send SIP INVITE to SBC<br>
+     Used anonymous mode for Click-to-call phone.<br>
+     Normal SIP phone have to send SIP REGISTER before SIP INVITE.</li>
+
+<li><strong>callback outgoingCallProgress</strong> When we receive the SBC SIP provisional response.<br>
+      For example 180 'Ringing'
+      Here we could provide some GUI visial effects, or play 'ringing-tone' sound</li>
+
+<li><strong>callback callShowStreams</strong> Means that the callee answered the call (or SBC used early media)<br>
+            Here we need to connect stream was provided by the WebRTC to our video element defined in an HTML page:<br>
+      <pre><code>
+            document.getElementById('remote_video').srcObject = remoteStream;
+      </code></pre>
+</li>
+<li><strong>callback callConfirmed</strong> Now we know - the call is established<br>
+            We can perform a GUI manipulation: display 'call_established_panel'
+</li>
+
+<li>At the end of a conversation <strong>activeCall.terminate()</strong>SIP stack sends BYE message</li>
+
+<li><strong>callback callTerminated</strong>
+     Here we display 'call_terminated_panel'<br>
+     and disconnect from the SBC by <strong>phone.deinit()</strong>
+</li>
+
+<li><strong>callback loginStateChanged 'disconnected'</strong>
+    It's not an error when phone.isInitialized() == false.
+</li>
+</ul>
+
+<p>
+As you can see, the phone is a state machine.
+Using phone API we can initiate some process (SBC connection, SBC registration, calling, hangup call, etc.)
+Results are asyncronious, we receive them with a delay, using a callback<br>
+Sometimes the result is not what we wanted.<br>
+For example, the user may not be available.
+</p>
+
+<p>This phone features:</p>
+<ul>
+<li>Supports single outgoing call</li>
+<li>Does not support incoming calls</li>
+<li>Does not require caller information (used anonimous user)</li>
+</ul>
+<p>
+
+<p>
+Note: this is a tutorial version of click-to-call phone.
+We provide with our SDK a more advanced version.
+</p>
+
+<h2>Tiny web phone</h2>
+<p><a href="2.tiny_phone">A tiny web phone example</a></p>
+<p>After loading, the phone uses local storage to retrieve user account data (user name, password...)<br>
+ If an account isn't set, it asks the user to enter the required data.
+</p>
+
+<p>After initialization, the phone connects to the SBC server, and sends SIP REGISTER.<br>
+Now the SBC knows where the phone is located, so the phone can receive an incoming call.
+</p>
+
+<p>This phone supports a single concurrent call.<br>
+ If during a call, there is another incoming call, the phone will automatically answer with 'Busy here'<br>
+ Incoming and outgoing audio &amp; video calls are supported.</p>
+
+<p>This phone's GUI is made up of a status line, a panel and video controls.<br>
+ There are 5 panels: settings, dialer, outgoing call, incoming call and call established.<br>
+ Only one panel is shown at a time while others are hidden.</p>
+
+<p>The code for outgoing call is the same as in the previous example<br>
+Incoming calls can be answered or rejected</p>
+
+<pre><code>
+activeCall.answer(phone.AUDIO);
+</code></pre>
+
+<pre><code>
+activeCall.reject();
+</code></pre>
+
+<p>The phone's actual code is fairly small (400 lines)</p>
+
+<h2>Simple web phone</h2>
+<p><a href="3.simple_phone">A simple web phone example</a></p>
+
+<p>
+It is still a simple (1100 lines), but more advanced phone.
+
+</p>
+<p>Added features:</p>
+<ul>
+<li>Option to change server configuration, phone configuration and user preferences (using local storage)</li>
+<li>Hold/un-hold call</li>
+<li>Answer to incoming video call with audio, audio and receive only video, audio and two-way video</li>
+<li>Start sending/receiving video in audio call. Stop sending video.</li>
+<li>Sending DTMF</li>
+<li>Incoming call desktop notification.</li>
+<li>Redirect incoming call</li>
+<li>Reconnection to previously connected server if page is reloaded</li>
+<li>Call restoration if page is reloaded during open call</li>
+<li>Support SBC switch over between active and redundant devices</li>
+<li>Audio playing: ring, ringing-tone, busy-tone, dtmf tones.</li>
+<li>Support of Chrome WebAudio autoplay policy</li>
+<li>Incoming call with Replaces header</li>
+</ul>
+
+<h4>Desktop notification</h4>
+
+<p>Desktop notificaiton is now a standard browser API.<br> <a href="https://developer.mozilla.org/en-US/docs/Web/API/notification">Desktop notification document</a></p>
+<pre><code>
+/-------- Desktop notification (for incoming call) ---------
+function guiNotificationShow(caller) {
+    if (Notification.permission !== "granted")
+        return;
+    guiNotificationClose();
+
+    const options = {
+        image: 'images/old-phone.jpg',
+        requireInteraction: true
+    }
+    desktopNotification = new Notification("Calling " + caller, options);
+    phone.log('desktopNotification created');
+    desktopNotification.onclick = function(event) {
+        event.target.close();
+        desktopNotification = null;
+    }
+}
+
+function guiNotificationClose() {
+    if (desktopNotification) {
+        desktopNotification.close();
+        desktopNotification = null;
+        phone.log('desktopNofification.close()');
+    }
+}
+</code></pre>
+
+<p>The user will be asked for permission to enable desktop notifications:</p>
+<pre><code>
+// Request permission to use desktop notification (for incoming call)
+if (Notification.permission === 'default')
+    Notification.requestPermission();
+</code></pre>
+
+
+<h4>Redirect incoming call</h4>
+<p>User can answer, reject or redirect incoming call</p>
+<p>Redirect uses SIP response 302 with Contact header to provide redirect address</p>
+<pre><code>
+// redirect incoming call
+call.redirect(recallToAddress);
+</code></pre>
+
+<p>When calling phone receive callTerminated callback with redirect response,<br>
+it can recall automatically to the provided address.</p>
+<pre><code>
+    callTerminated: function(call, message, cause, redirectTo) {
+        ac_log('phone>>> call terminated callback, cause=%o', cause);
+        . . . . . .
+        if (cause === 'Redirected') {
+            ac_log('Redirect call to ' + redirectTo);
+            let videoOption = call.hasSendVideo() ? phone.VIDEO : phone.AUDIO;
+            activeCall = phone.call(videoOption, redirectTo);
+        }
+    }
+</code></pre>
+
+<h4>Phone will reconnect to a previously connected server if the webpage is reloaded</h4>
+<p>
+Before the webpage is closed, the “beforeunload” event is called.<br>
+Make use of that event to save the connected server’s address to the local storage.
+</p>
+<h5>Save connected server address</h5>
+<pre><code>
+    let serverAddress = phone.getServerAddress(); // currently connected server address
+    if (serverAddress !== null) {
+        let data = {
+            address: serverAddress,
+            time: new Date().getTime()
+        }
+        localStorage.setItem('phoneRestoreServer', JSON.stringify(data));
+    }
+</code></pre>
+
+<h5>Raise priority of previously connected server address</h5>
+<pre><code>
+    // load configuration.
+    serverConfig = guiLoadServerConfig();
+
+    // if was page reloading, try reconnect previously connected server
+    let restoreData = localStorage.getItem('phoneRestoreServer');
+
+    // check if there was a saved server data in local storage
+    if (restoreData !== null) {
+        localStorage.removeItem('phoneRestoreServer');
+        let restoreServer = JSON.parse(restoreData);
+        let delay = Math.ceil(Math.abs(restoreServer.time - new Date().getTime()) / 1000);
+        // Check if the stored data has a reasonable timestamp which indicates the there was a refresh not long ago.
+
+        if (delay &lt;=  phoneConfig.restoreCallMaxDelay) {
+            // locate the array location of the server address we found in the stored data in the servers array.
+            let ix = searchServerAddress(serverConfig.addresses, restoreServer.address);
+            if( ix !== -1){
+                ac_log('Page reloading, raise priority of previously connected server: "' + restoreServer.address + '"');
+                // set high priority to the found server in the servers array we so we can be assure this address will be used
+                const HIGH_PRIORITY = 1000;
+                serverConfig.addresses[ix] = [restoreServer.address, HIGH_PRIORITY];
+            } else {
+                ac_log('Cannot find previously used server: ' + restoreServer.address + ' in configuration');
+            }
+        }
+    }
+
+    // proceed with the connection as we have allways done and after we have the highest priority to the desired server.
+    phone.setServerConfig(serverConfig.addresses, serverConfig.domain, serverConfig.iceServers);
+</code></pre>
+
+<h4>Call restoration if page is reloaded during an open call</h4>
+<p>
+Before closing the page, the "beforeunload" event is called.<br>
+Here you can check whether the active call exists.<br>
+To restore it, prepare a SIP replaces header and other information,
+and save it in the local storage.<br>
+</p>
+<h5>Prepare restore call data</h5>
+<pre><code>
+    if (activeCall !== null && activeCall.isEstablished() && phoneConfig.restoreCall) {
+        let data = {
+            callTo: activeCall.data['_user'],
+            video: activeCall.getVideoState(), // sendrecv, sendonly, recvonly, inactive
+            replaces: activeCall.getReplacesHeader(),
+            time: new Date().getTime(),
+            hold: `${activeCall.isLocalHold() ? 'local' : ''}${activeCall.isRemoteHold() ? 'remote' : ''}`,
+            mute: `${activeCall.isAudioMuted() ? 'audio' : ''}${activeCall.isVideoMuted() ? 'video' : ''}`
+        }
+        localStorage.setItem('phoneRestoreCall', JSON.stringify(data));
+    }
+</code></pre>
+
+<h5>Restore call</h5>
+<p>After reloading the page, and registering on the SBC server,
+ we will check if the saved call exists, if it does, we will try to restore it.</p>
+
+<pre><code>
+    let restoreData = localStorage.getItem('phoneRestoreCall');
+    if( restoreData !== null ){
+        let restore = JSON.parse(restoreData);
+        let delay = Math.ceil(Math.abs(restore.time - new Date().getTime()) / 1000);
+        if (delay > phoneConfig.restoreCallMaxDelay) {
+	        ac_log('No restore call, delay is too long (' + delay + ' seconds)');
+	        return false;
+        }
+        ac_log('Trying to restore call...');
+        let videoOption = (restore.video === 'sendrecv' || restore.video === 'sendonly') ? phone.VIDEO : phone.AUDIO;
+        guiMakeCallTo(restore.callTo, videoOption, ['Replaces: ' + restore.replaces], { 'restoreCall': restore });
+    }
+</code></pre>
+
+<p>
+When a call is restored we will also restore its Hold & Mute states
+</p>
+
+<pre><code>
+let restore = activeCall.data['restoreCall'];
+if (restore) {
+    if (restore.hold !== '') {
+        if (restore.hold.includes('remote')) {
+            ac_log('Restore remote hold');
+            guiWarning('Remote HOLD');
+            activeCall.setRemoteHoldState(); // Set JsSIP session internal state for remote hold.
+        }
+        if (restore.hold.includes('local')) {
+            ac_log('Restore local hold');
+            guiHold();                       // Send hold re-INVITE
+        }
+    } else if (restore.mute !== '') {
+        if (restore.mute.includes('audio')) {
+            ac_log('Restore mute audio');
+            guiMuteAudio();
+        }
+        if (restore.mute.includes('video')) {
+            ac_log('Restore mute video');
+            guiMuteVideo();
+        }
+    }
+}
+</code></pre>
+
+
+<h4>Support AudioCodes SBC switch over</h4>
+<p>
+Two SBC's in active and standby mode are used to support High Availability.<br>
+If the active SBC fails, the standby SBC will take-over.<br>
+From the client's point of view, the SBC connection will be closed/failed and then reconnect and re-login to the SBC.<br>
+This can occur during a call (there will be a short pause in the transmission of sound.)<br>
+In this case the UI state shouldn't be changed (stay in an open call).
+
+<pre><code>
+    loginStateChanged: function(isLogin, cause) {
+         switch (cause) {
+             . . . .
+             case "login":
+                 ac_log('phone>>> loginStateChanged: login');
+                 . . . . .
+                 if (activeCall !== null && activeCall.isEstablished()) {
+                     ac_log('Re-login done, active call exists (SBC might have switched over to secondary)');
+                     guiShowPanel('call_established_panel');
+                 }
+
+</code></pre>
+</p>
+<h4>Audio player</h4>
+<p>To make the phone resemble  a stationary one, a sound was added for the ringing and phone
+tones (ringing, busy, DTMF)<p>
+<p>
+Because WebRTC can only be used in a modern browser, audio playing uses AudioContext API.<br>
+Simple AudioPlayer implementation provided in utils.js
+</p>
+
+<p>Sounds can be loaded from site, using the following encoding: mp3, aac and ogg (vorbis).<br>
+For modern browsers it’s not necessary to provide the same sound in alternative encodings, just use mp3 and check that it works on all supported browsers.
+</p>
+
+<p>
+Tones can be generated by generateTone() or  generateTonesSuite() methods.
+</p>
+
+<h5>Audio player: create, initialize, download sounds from the site, generate tones</h5>
+<pre><code>
+    let SoundConfig = {
+        generateTones: {
+            // Ringing and busy tones vary in different countries, so those should be defined accordingly.
+            // Here f - frequency Hz, t - duration seconds
+            ringingTone: [{ f: 425, t: 1.0 }, { t: 4.0 }],
+            busyTone: [{ f: 425, t: 0.48 }, { t: 0.48 }],
+            disconnectTone: [{ f: 425, t: 0.48 }, { t: 0.48 }],
+            autoAnswerTone: [{ f: 425, t: 0.3 }]
+        },
+        downloadSounds: [
+            { ring: 'ring1' }, // ring1 by default (user can select other ring)
+            'bell'
+        ],
+		. . .
+    }
+	
+
+    let audioPlayer = new AudioPlayer();
+    audioPlayer.init(ac_log);
+
+    audioPlayer.downloadSounds('sounds/', SoundConfig.downloadSounds)
+        .then(() => {
+            // Concatenate user defined tones and DTMF tones defined in audioPlayer.
+            let tones = Object.assign({}, SoundConfig.generateTones, audioPlayer.dtmfTones);
+            return audioPlayer.generateTonesSuite(tones);
+        })
+        .then(() => {
+            ac_log('AudioPlayer: sounds are ready:', audioPlayer.sounds);
+        })
+</code></pre>
+
+
+<h5>Play a sound</h5>
+<pre><code>
+   audioPlayer.play({ name: 'ringingTone', loop: true, volume: 0.3 });
+</code></pre>
+
+<pre><code>
+   audioPlayer.play({ name: 'busyTone', volume: 0.3, repeat: 4 });
+</code></pre>
+
+<h5>Stop playing</h5>
+<pre><code>
+   audioPlayer.stop();
+</code></pre>
+
+
+<h5>Support of Google Chrome’s WebAudio autoplay policy</h5>
+<p>
+The following methods have been added:
+<ul>
+<li>isDisabled() – This checks whether autoplay is disabled or not.</li>
+<li>enable() – This enables autoplay. It will only succeed when called after the user has interacted with an event prompting them to enable autoplay (for example, a button click).</li>
+</ul>
+</p>
+
+<pre><code>
+function guiEnableSound() {
+    if (!audioPlayer.isDisabled())
+        return;
+    audioPlayer.enable()
+        .then(() => {
+          ac_log('Sound is enabled')
+        })
+        .catch((e) => {
+            ac_log('Cannot enable sound', e);
+        });
+}
+</code></pre>
+
+<h4>Configure sounds/tones using config.js</h4>
+<p>
+The phone can use various ringback, busy and incoming calls ringtones (sounds)<br>
+Therefore, it is convenient to adjust the sound without rebuilding the phone, by modifying the SoundConfig in the file config.js
+</p>
+
+<pre><code>
+let SoundConfig = {
+    generateTones: {
+        // Phone ringing, busy and other tones vary in different countries.
+        // Please see: https://www.itu.int/ITU-T/inr/forms/files/tones-0203.pdf
+
+        /* Germany
+        ringingTone: [{ f: 425, t: 1.0 }, { t: 4.0 }],
+        busyTone: [{ f: 425, t: 0.48 }, { t: 0.48 }],
+        disconnectTone: [{ f: 425, t: 0.48 }, { t: 0.48 }],
+        autoAnswerTone: [{ f: 425, t: 0.3 }]
+        */
+
+        /* France
+        ringingTone: [{f:400, t:1.5}, {t:3.5}],
+        busyTone: [{ f: 400, t: 0.5 }, { t: 0.5 }],
+        disconnectTone: [{ f: 400, t: 0.5 }, { t: 0.5 }],
+        autoAnswerTone: [{ f: 400, t: 0.3 }]
+        */
+
+        /* Great Britain */
+        ringingTone: [{ f: [400, 450], t: 0.4 }, { t: 0.2 }, { f: [400, 450], t: 0.4 }, { t: 2.0 }],
+        busyTone: [{ f: 400, t: 0.375 }, { t: 0.375 }],
+        disconnectTone: [{ f: 400, t: 0.375 }, { t: 0.375 }],
+        autoAnswerTone: [{ f: 400, t: 0.3 }]
+    },
+    downloadSounds: [
+        { ring: 'ring1' }, // ring1 by default (user can select other ring)
+        'bell'
+    ],
+    play: {
+        outgoingCallProgress: { name: 'ringingTone', loop: true, volume: 0.2 },
+        busy: { name: 'busyTone', volume: 0.2, repeat: 4 },
+        disconnect: { name: 'disconnectTone', volume: 0.2, repeat: 3 },
+        autoAnswer: { name: 'autoAnswerTone', volume: 0.2 },
+        incomingCall: { name: 'ring', loop: true, volume: 1.0, dropDisabled: true },
+        incomingMessage: { name: 'bell', volume: 1.0 },
+        dtmf: { volume: 0.15 }
+    }
+}
+</code></pre>
+
+<p>
+See code example above how SoundConfig used in methods: downloadSounds and generateTonesSuite
+</p>
+
+<p>
+SoundConfig used for all sound plays:
+</p>
+
+<pre><code>
+audioPlayer.play(SoundConfig.play.outgoingCallProgress);
+audioPlayer.play(SoundConfig.play.busy);
+audioPlayer.play(SoundConfig.play.disconnect);
+audioPlayer.play(SoundConfig.play.autoAnswer);
+audioPlayer.play(SoundConfig.play.incomingCall);
+audioPlayer.play(SoundConfig.play.incomingMessage);
+</code></pre>
+
+<p>
+To playing DTMF added key name:
+</p>
+<pre><code>
+audioPlayer.play(Object.assign({ 'name': key }, SoundConfig.play.dtmf));
+</code></pre>
+
+
+
+
+<h4>Incoming call with Replaces header</h4>
+<p>
+Incoming INVITE can contain <strong>Replaces</strong> header (used for attended transfer).<br>
+In the case "incomingCall" callback argument replacedCall points to the call that should be replaced.<br>
+(for other cases replacedCall is null)
+</p>
+<p>
+Developer should close replacedCall call, and auto answer to incoming call.<br>
+The new call should visually replace previous call in GUI.
+</p>
+
+<pre><code>
+incomingCall: function (call, invite, replacedCall) {
+    ac_log('phone>>> incomingCall', call, invite, replacedCall);
+    . . . .
+    // If received INVITE with Replaces header
+    if (replacedCall !== null) {
+        ac_log('phone: incomingCall, INVITE with Replaces');
+
+        // close the replaced call.
+        replacedCall.data['terminated_replaced'] = true;
+        replacedCall.terminate();
+
+        // auto answer to replaces call.
+        activeCall = call;
+        activeCall.data['open_replaced'] = true;
+
+        // Try to use the same video option as was used in replaced call.
+        let videoOption = replacedCall.hasVideo() ? phone.VIDEO : (replacedCall.hasReceiveVideo() ? phone.RECVONLY_VIDEO : phone.AUDIO);
+        activeCall.answer(videoOption);
+        return;
+    }
+}
+</code></pre>
+
+
+<h2>Phone prototype</h2>
+<p><a href="4.phone_prototype">Run phone prototype example</a></p>
+<p>Added features:</p>
+<ul>
+<li>Call history, and redial</li>
+<li>Blind call transfer</li>
+<li>Receiving SIP NOTIFY in/out of SIP INVITE dialog (NOTIFY talk example)</li>
+<li>Incoming call custom header usage (Alert-Info example)</li>
+<li>Sending/Receiving out of dialog SIP MESSAGE</li>
+<li>Sending/Receiving in dialog SIP INFO</li>
+<li>Screen sharing</li>
+<li>SIP SUBSCRIBE/NOTIFY dialog support</li>
+</ul>
+
+
+<h4>Call history</h4>
+<p>To keep a user's call history, it's better to use IndexedDB.<br> If 'user name' is changed, the phone will clear its call history.<br> Call history is saved in a database, and also set in 'call_log_panel' as an unordered list</p>
+<pre><code>
+
+/**
+ * Database with single store and with copy of the store in memory - objects list
+ * Purpose: make the list persistent.
+ * Key is part of record, based on current time, unique and has name 'id'
+ * Number of objects in store is limited, oldest objects will be deleted.
+ * If needed, additional stores can be added: override open(),
+ * and use get(), put(), clear(), delete() methods with store name.
+ */
+class AbstractDb {
+    constructor(dbName, storeName, maxSize) {
+        this.dbName = dbName;
+        this.storeName = storeName;
+        this.maxSize = maxSize; // max number of objects
+        this.db = null;
+        this.list = []; // default store copy in memory.
+        this.idSeqNumber = -1; // to generate unique key.
+    }
+
+    // Create store unique key. (no more than 1 million in the same millisecond)
+    // key must be part or record and have name 'id'
+    createId(time) {
+        this.idSeqNumber = (this.idSeqNumber + 1) % 1000000; // range 0..999999
+        return time.toString() + '-' + ('00000' + this.idSeqNumber.toString()).slice(-6);
+    }
+
+    // Open the database, if needed create it.
+    open() {
+        return new Promise((resolve, reject) => {
+            let r = indexedDB.open(this.dbName);
+            r.onupgradeneeded = (e) => {
+                e.target.result.createObjectStore(this.storeName, { keyPath: 'id' });
+            }
+            r.onsuccess = () => {
+                this.db = r.result;
+                resolve();
+            }
+            r.onerror = r.onblocked = () => { reject(r.error); };
+        });
+    }
+
+    // load records to memory, ordered by time, if needed delete oldest records
+    load() {
+        return new Promise((resolve, reject) => {
+            if (this.db === null) { reject('db is null'); return; }
+            let trn = this.db.transaction(this.storeName, 'readwrite');
+            trn.onerror = () => { reject(trn.error); }
+            let store = trn.objectStore(this.storeName)
+            let onsuccess = (list) => {
+                this.list = list;
+                let nDel = this.list.length - this.maxSize;
+                if (nDel <= 0) {
+                    resolve();
+                } else {
+                    let r = store.delete(IDBKeyRange.upperBound(this.list[nDel - 1].id));
+                    r.onerror = () => { reject(r.error); }
+                    r.onsuccess = () => {
+                        this.list = this.list.splice(-maxSize);
+                        resolve();
+                    }
+                }
+            }
+            let onerror = (e) => { reject(e); }
+            let getAll = store.getAll ? this._getAllBuiltIn : this._getAllCursor;
+            getAll(store, onsuccess, onerror);
+        });
+    }
+
+    _getAllBuiltIn(store, onsuccess, onerror) { // Chrome, Firefox
+        let r = store.getAll();
+        r.onerror = () => onerror(r.error);
+        r.onsuccess = () => onsuccess(r.result);
+    }
+
+    _getAllCursor(store, onsuccess, onerror) { // Legacy Microsoft Edge
+        let list = [];
+        let r = store.openCursor();
+        r.onerror = () => onerror(r.error);
+        r.onsuccess = (e) => {
+            let cursor = e.target.result;
+            if (cursor) {
+                list.push(cursor.value);
+                cursor.continue();
+            } else {
+                onsuccess(list);
+            }
+        };
+    }
+
+    // Add new record. If needed delete oldest records
+    add(record) {
+        return new Promise((resolve, reject) => {
+            if (this.db === null) { reject('db is null'); return; }
+            let trn = this.db.transaction(this.storeName, 'readwrite');
+            trn.onerror = () => { reject(trn.error); }
+            let store = trn.objectStore(this.storeName)
+            let r = store.add(record);
+            r.onerror = () => { reject(r.error); }
+            r.onsuccess = () => {
+                this.list.push(record);
+                let nDel = this.list.length - this.maxSize;
+                if (nDel <= 0) {
+                    resolve();
+                } else {
+                    r = store.delete(IDBKeyRange.upperBound(this.list[nDel - 1].id));
+                    r.onerror = () => { reject(r.error); }
+                    r.onsuccess = () => {
+                        this.list = this.list.splice(-this.maxSize);
+                        resolve();
+                    }
+                }
+            }
+        });
+    }
+
+    // Update record with some unique id.
+    update(record) {
+        let index = this.list.findIndex((r) => r.id === record.id);
+        if (index == -1)
+            return Promise.reject('Record is not found');
+        this.list[index] = record;
+        return this._exec('put', this.storeName, record);
+    }
+
+    // Delete record with the key (if store is default delete also from list)
+    delete(id, storeName = this.storeName) {
+        if (storeName === this.storeName) {
+            let index = this.list.findIndex((r) => r.id === id);
+            if (index == -1)
+                return Promise.reject('Record is not found');
+            this.list.splice(index, 1);
+        }
+        return this._exec('delete', storeName, id);
+    }
+
+    // Clear all store records
+    clear(storeName = this.storeName) {
+        this.list = [];
+        return this._exec('clear', storeName);
+    }
+
+    get(key, storeName) {
+        return this._exec('get', storeName, key);
+    }
+
+    put(record, storeName) {
+        return this._exec('put', storeName, record);
+    }
+
+    // Single transaction operation.
+    _exec(op, storeName, data) {
+        return new Promise((resolve, reject) => {
+            if (this.db === null) { reject('db is null'); return; }
+            let trn = this.db.transaction(storeName, 'readwrite');
+            trn.onerror = () => { reject(trn.error); }
+            let store = trn.objectStore(storeName)
+            let r;
+            switch (op) {
+                case 'clear':
+                    r = store.clear();
+                    break;
+                case 'delete':
+                    r = store.delete(data);
+                    break;
+                case 'put':
+                    r = store.put(data);
+                    break;
+                case 'get':
+                    r = store.get(data);
+                    break;
+                default:
+                    reject('db: wrong request');
+                    return;
+            }
+            r.onerror = () => { reject(r.error); }
+            r.onsuccess = () => { resolve(r.result); }
+        });
+    }
+}
+
+/**
+ * To keep phone call logs.
+ */
+class CallLogDb extends AbstractDb {
+    constructor(maxSize) {
+        super('phone', 'call_log', maxSize);
+    }
+}
+</code></pre>
+
+
+<h4>Custom loggers</h4>
+<p>By default, all logs from JsSIP and AudioCodes API write to console.log<br>
+You can reassign them to a custom logger.<br>
+
+<pre><code>
+    function setConsoleLoggers() {
+        let useTimestamp = phoneConfig.addLoggerTimestamp;
+        let useColor = ['chrome', 'firefox', 'safari'].includes(phone.getBrowser());
+
+        ac_log = function () { // Assign ac_log global variable. It's phone logger.
+            let args = [].slice.call(arguments);
+            let firstArg = [(useTimestamp ? createTimestamp() : '') + (useColor ? '%c' : '') + args[0]];
+            if (useColor) firstArg = firstArg.concat(['color: BlueViolet;']);
+            console.log.apply(console, firstArg.concat(args.slice(1)));
+        };
+        let js_log = function () {
+            let args = [].slice.call(arguments);
+            let firstArg = [(useTimestamp ? createTimestamp() : '') + args[0]];
+            console.log.apply(console, firstArg.concat(args.slice(1)));
+        };
+
+        phone.setAcLogger(ac_log);     // It's AudioCodes SDK logger.
+        phone.setJsSipLogger(js_log);  // It's JsSIP stack logger.
+    }
+</code></pre>
+</p>
+
+<p>
+Note: no need to add a timestamp to the log.<br>
+You should enable show console log timestamps in browser.
+</p>
+<p>
+Our customers send us logs with discovered problems.<br>
+To our surprise, none of them sent logs with a timestamps.<br>
+Therefore, we decided that we would add the timestamp string before each log entry in our example logger function.
+</p>
+
+<p>
+By default, the log is printed in the browser console window.<br>
+It can be sent via websocket to a server.<br>
+We added the websocket logger to our examples:
+
+<pre><code>
+    function setWebsocketLoggers(url) {
+       return new Promise((resolve, reject) => {
+           let ws = new WebSocket('wss://' + url, 'wslog');
+           ws.onopen = () => { resolve(ws); }
+           ws.onerror = (e) => { reject(e); }
+       })
+           .then(ws => {
+               const log = function () {
+                   let args = [].slice.call(arguments);
+                   ws.send([createTimestamp() + args[0]].concat(args.slice(1)).join() + '\n');
+               };
+               ac_log(`Sending log to "${url}"`);
+               ac_log = log;               // It's phone logger.
+               phone.setAcLogger(log);     // It's AudioCodes SDK logger.
+               phone.setJsSipLogger(log);  // It's JsSIP stack logger.
+           })
+    }
+</code></pre>
+</p>
+
+<p>
+If the websocket logger cannot connect to the cloud service, the browser console is used.
+<br>
+
+<pre><code>
+    function documentIsReady() {
+        // Load configurations
+        serverConfig = guiLoadServerConfig();
+        phoneConfig = guiLoadPhoneConfig();
+        userPref = guiLoadUserPref();
+    
+        // Set logger
+        if (!serverConfig.logger) {
+            setConsoleLoggers();                      // Use console logger.
+            startPhone();
+        } else {
+            setWebsocketLoggers(serverConfig.logger)  // Use websocket logger.
+                .catch((e) => {
+                    setConsoleLoggers();              // Cannot connect. Use console logger.
+                    ac_log('Cannot connect to logger server', e);
+                })
+                .finally(() => {
+                    startPhone();
+                })
+        }
+    }
+</code></pre>
+</p>
+
+
+<h4>Access to internal WebRTC objects</h4>
+<p> After the call is established, you have RTCPeerConnection using method call.getRTCPeerConnection(),<br>
+and local and remote WebRTC media streams using methods call.getRTCLocalStream() and call.getRTCRemoteStream().
+<p>
+Note: Developers may call the WebRTC API directly or use the provided SDK functions.<br>
+The functions called via phone.getWR() (webrtc wrapper) and return Promise.<br>
+View the examples below.<br>
+</p>
+
+<h5>Print active call track information (SDK API)</h5>
+<pre><code>
+async function printStreamsParameters() {
+    if (activeCall === null) {
+        ac_log('activeCall is null');
+        return;
+    }
+    // Current video state set according answer SDP (hold answer will be ignored)
+    ac_log('Video State current: ' + activeCall.getVideoState() + ' enabled: ' + activeCall.getEnabledVideoState());
+
+    // WebRTC tracks
+    let li = await phone.getWR().stream.getInfo(activeCall.getRTCLocalStream());
+    let ri = await phone.getWR().stream.getInfo(activeCall.getRTCRemoteStream());
+    ac_log(`Enabled Tracks: local ${li} remote ${ri}`)
+
+    // WebRTC transceivers
+    let ti = await phone.getWR().connection.getTransceiversInfo(activeCall.getRTCPeerConnection());
+    ac_log(`Transceivers: ${ti}`);
+}
+</code></pre>
+
+<h5>Print active call track information (WebRTC API)</h5>
+<pre><code>
+function printStreamsParameters() {
+    if (activeCall === null) {
+        ac_log('activeCall is null');
+        return;
+    }
+    // Current video state set according answer SDP (hold answer will be ignored)
+    ac_log('Video State current: ' + activeCall.getVideoState() + ' enabled: ' + activeCall.getEnabledVideoState());
+
+    // WebRTC tracks
+    ac_log(`Enabled Tracks: local ${getStreamInfo(activeCall.getRTCLocalStream())} remote ${getStreamInfo(activeCall.getRTCRemoteStream())}`)
+
+    // WebRTC transceivers
+    let conn = activeCall.getRTCPeerConnection();
+    let ts = conn.getTransceivers();
+    let at = getTransceiver(ts, 'audio');
+    let vt = getTransceiver(ts, 'video');
+    ac_log(`Transceivers: (${ts.length}) audio ${getTransInfo(at)} video ${getTransInfo(vt)}`, ts);
+}
+
+function getStreamInfo(st) {
+    if( st === null )
+      return 'stream is null'
+    return `audio: ${getTrackInfo(st.getAudioTracks())} video: ${getTrackInfo(st.getVideoTracks())}`;
+}
+
+function getTrackInfo(tr) {
+    return tr.length > 0 ? tr[0].enabled.toString() : '-'
+}
+
+function getTransceiver(transceivers, kind){
+    for (let t of transceivers) {
+        if (t.sender !== null && t.sender.track !== null && t.sender.track.kind === kind)
+            return t;
+        if (t.receiver !== null && t.receiver.track !== null && t.receiver.track.kind === kind)
+            return t;
+    }
+    return null;
+}
+
+function getTransInfo(t){
+    return t === null ? 'none' : `d=${t.direction} c=${t.currentDirection}`;
+}
+</code></pre>
+
+<h5>Print active call statistics (SDK API)</h5>
+<pre><code>
+function printCallStats() {
+    if (activeCall === null) {
+        ac_log('activeCall is null');
+        return;
+    }
+    let conn = activeCall.getRTCPeerConnection();
+    phone.getWR().connection.getStats(conn, ['outbound-rtp', 'inbound-rtp'])
+        .then(str => {
+            ac_log('call stats: ' + str);
+        })
+        .catch(err => {
+            ac_log('stat error', err);
+        });
+}
+</code></pre>
+
+<h5>Print active call statistics (WebRTC API)</h5>
+<pre><code>
+function printCallStats() {
+    if (activeCall === null) {
+        ac_log('activeCall is null');
+        return;
+    }
+    let conn = activeCall.getRTCPeerConnection();
+    let str = '';
+    let types = ['outboud-rtp', 'inbound-rtp'];
+    conn.getStats(null)
+        .then(report => {
+            report.forEach(now => {
+                if (types.includes(now.type)) {
+                    str += ' {';
+                    let first = true;
+                    for (let key of Object.keys(now)) {
+                        if (first) first = false;
+                        else str += ',';
+                        str += (key + '=' + now[key]);
+                    }
+                    str += '} \r\n';
+                }
+            });
+        })
+        .then(() => {
+            ac_log(str);
+        });
+}
+</code></pre>
+
+
+
+<h4>Blind call transfer</h4>
+<h5>Transferor</h5>
+
+<p>
+To transfer a call, the phone places the current call on hold and sends a SIP REFER message
+to the active call (thereby requesting it to initiate a new call to a different destination).
+</p>
+
+<pre><code>
+async function blindTransfer(transferTo) {
+    ac_log('blind transfer ' + transferTo);
+
+    //  wait until active call be on hold
+    while (activeCall !== null && !activeCall.isLocalHold()) {
+        try {
+            await activeCall.hold(true);
+        } catch (e) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    if (activeCall === null)
+        return;
+
+    // send REFER
+    activeCall.sendRefer(transferTo);
+}
+</code></pre>
+
+
+<p>
+After a call transfer has initialized, the phone will check the process by using the “transferorNotification” callback.<br>
+If the call transfer fails, it will un-hold the current call.<br>
+If the call transfer succeeds, it will end the current call.<br>
+</p>
+
+
+<pre><code>
+transferorNotification: function (call, state) {
+    switch (state) {
+        case 0:    // "in progress": REFER accepted or received NOTIFY 1xx
+            break;
+
+        case -1:   // "failed": REFER rejected or received NOTIFY >=300
+            call.hold(false); // un-hold active call
+            break;
+
+        case 1:   // "success" received NOTIFY 2xx
+            guiHangup(); // terminate active call
+            break;
+    }
+}
+</code></pre>
+
+<h5>Transferee</h5>
+<p>
+When the phone receives a REFER message it will call the address extracted from the Refer-To header.
+</p>
+
+<p>
+To receive a REFER message, use the “transfereeREFER” callback.
+This callback will allow the phone to accept or reject incoming REFER messages.
+</p>
+
+<p>
+<pre><code>
+transfereeRefer: function (call, refer) {
+    if (transferCall === null) {
+        ac_log('phone>>> transferee incoming REFER: accepted');
+        return true;
+    } else {
+        ac_log('phone>>> transferee incoming REFER: rejected, because other transfer in progress');
+        return false;
+    }
+}
+</code></pre>
+</p>
+
+<p>
+If a REFER message is accepted, the SIP stack will automatically create a new call and start the calling process.<br>
+Developers should use the "transfereeCreatedCall" callback to receive a reference to  the newly created call object.<br>
+Note: the transferee’s phone will have two calls working simultaneously, i.e. the call in which the REFER was received and a new outgoing call to the REFER’s specified destination.
+</p>
+
+<p>
+<pre><code>
+transfereeCreatedCall: function (call) {
+    ac_log('phone>>> transferee created call', call);
+    transferCall = call; // Used until call will be established
+    guiInfo('call transferring to ' + call.data['_user']);
+    . . . . .
+}
+</code></pre>
+</p>
+
+
+<h4>Receiving NOTIFY in/out of dialog</h4>
+<p>
+Developers should use the "incomingNotify" callback to receive incoming NOTIFY.<br>
+</p>
+
+<p>
+Note: to receive incoming in dialog NOTIFY used modified JsSIP.<br>
+(because it's not standard SIP extension)
+</p>
+
+<p>
+Partial implementation of Broadsoft call control:
+</p>
+
+<p>
+<pre><code>
+incomingNotify: function (call, eventName, from, contentType, body, request) {
+    ac_log(`phone>>> incoming NOTIFY "${eventName}"`, call, from, contentType, body);
+    if (call === null)
+        return false; // skip out of dialog NOTIFY.
+    if (eventName !== 'talk' && eventName !== 'hold')
+        return false; // skip unsupported events
+    if (activeCall === null)
+        return false; // skip illegal state.
+
+    if (eventName === 'talk') {
+        if (!activeCall.isEstablished() && !activeCall.isOutgoing()) {
+            ac_log('incoming NOTIFY "talk": answer call');
+            // Choose the best available video option.
+            let videoOption = activeCall.hasVideo() ? (hasCamera ? phone.VIDEO : phone.RECVONLY_VIDEO) : phone.AUDIO;
+            guiAnswerCall(videoOption);
+        } else if (activeCall.isEstablished() && activeCall.isLocalHold()) {
+            ac_log('incoming NOTIFY "talk": un-hold call');
+            call.hold(false);
+        } else {
+            ac_log('incoming NOTIFY "talk": ignored');
+        }
+    } else if (eventName === 'hold') {
+        if (activeCall.isEstablished() && !activeCall.isLocalHold()) {
+            ac_log('incoming NOTIFY "hold": set call on hold');
+            activeCall.hold(true);
+        } else {
+            ac_log('incoming NOTIFY "hold": ignored');
+        }
+    }
+    return true; // mark that we 'consume' the NOTIFY.
+}
+</code></pre>
+</p>
+</p>
+
+
+<h4>Incoming call custom header usage</h4>
+<p>
+Incoming INVITE may contain custom SIP headers.<br>
+In the example we check Alert-Info header.
+</p>
+
+<pre><code>
+incomingCall: function (call, invite, replacedCall){
+    . . . .
+    // Check if incoming INVITE contains Alert-Info header.
+    let alertInfo = new AlertInfo(invite);
+    ac_log(`alert-info header ${alertInfo.exists() ? ' exists' : 'does not exist'}`);
+    if (alertInfo.hasAutoAnswer()) {
+        ac_log('*** Used Alert-Info Auto answer ***');
+        // Choose the best available video option.
+        let videoOption = activeCall.hasVideo() ? (hasCamera ? phone.VIDEO : phone.RECVONLY_VIDEO): phone.AUDIO;
+        guiAnswerCall(videoOption);
+        return;
+    }
+    . . . .
+</code></pre>
+
+<p>
+"incomingCall" callback "invite" argument is JsSIP.IncomingRequest<br>
+Developer can get the header(s) by invite.getHeaders('alert-info')<br>
+JsSIP does not provide parser for 'Alert-Info', it is presented as raw header (string)<br>
+We use here custom Alert-Info parser (defined in utils.js).<br>
+In a similar way developer can use any custom SIP header.<br>
+</p>
+
+<h4>Sending/Receiving out of dialog SIP MESSAGE</h4>
+
+<p>
+To receive (out of SIP dialog) SIP message used callback "incomingMessage"
+</p>
+<pre><code>
+incomingMessage: function (call, from, contentType, body, request) {
+    ac_log('phone>>> incoming MESSAGE', from, contentType, body);
+	. . . . .
+}
+</code></pre>
+
+
+<p>
+To send SIP message, used phone.sendMessage()
+</p>
+<pre><code>
+function guiSendMessage() {
+    let to = document.querySelector('#send_message_form [name=send_to]').value.trim();
+    let text = document.querySelector('#send_message_form [name=message]').value.trim();
+    if (to === '' || text === '')
+        return;
+    phone.sendMessage(to, text)
+        .then((e) => {
+            ac_log('message sent', e);
+            guiInfo('Message sent');
+        })
+        .catch((e) => {
+            ac_log('message sending error', e);
+            guiError('Cannot send message: ' + e.cause);
+        });
+}
+</code></pre>
+
+<p>
+Note: please check sending result.<br>
+When receiver phone is not registered (off-line), will be catched error,<br>
+because SBC response: 404 "User not found"<br>
+</p>
+
+
+<h4>Sending/Receiving in dialog SIP INFO</h4>
+
+<p>
+To receive (in SIP dialog) SIP INFO used callback "incomingInfo"
+</p>
+<pre><code>
+incomingInfo: function (call, from, contentType, body, request) {
+    ac_log('phone>>> incoming INFO', call, from, contentType, body);
+	. . . . .
+}
+</code></pre>
+
+
+<p>
+To send SIP INFO message, used call.sendInfo()
+</p>
+
+<pre><code>
+function guiSendInfo() {
+    let info = {test: 'test'};
+    activeCall.sendInfo(JSON.stringify(info), 'application/json');
+}
+</code></pre>
+
+<h4>Local and remote video elements overlapping</h4>
+<p>
+Local and remote video elements can overlap each other on the screen.<br>
+Select the video size 'Custom', and use the mouse to
+drag the video element, and mouse wheel to increase or decrease its size.
+</p>
+<p>
+You can see how it is implemented in the functions: guiSetVideoStyles(), guiUseMouse(),
+and functions starts with eventMouse...<br>
+<br>
+</p>
+
+<h4>Set audio and video constraints for browsers</h4>
+<p>
+Can be used browser names: "chrome", "firefox", "safari", "other".<br>
+or with os name, e.g. "chrome|windows", "chrome|android", ...<br>
+Possible OS names: "windows", "android", "macos", "ios", "linux", "other".
+</p>
+<p>
+If for current browser much 2 entries, the latest replace the previous.<br>
+E.g. if current browser is Safari in iOS for the below example, at first
+will be set constraints for "safari", and then they will be replaced by
+2nd matched entry "safari|ios".
+</p>
+
+<pre><code>
+let constraints = {
+    chrome: { 
+        audio: { echoCancellation: true },
+        video: { aspectRatio: 1.0 }		   
+    },
+	
+    firefox: { 
+        audio: { echoCancellation: true }
+    },
+    
+    safari: {
+        audio: { echoCancellation: false } 
+    },
+	
+    "safari|ios": {
+        audio: { echoCancellation: false } 
+    },
+	
+    other: {
+        audio: { echoCancellation: true }
+    }
+};
+
+phone.setBrowsersConstraints(constraints);
+</code></pre>
+
+<p>
+We don't check in the example if Chrome browser supports for example video constraint "aspectRatio".<br>
+It depends of used operating system, driver and web camera model.<br>
+Therefore, to avoid <strong>over constrained error</strong> we use optional format of constraints: default or with key word "ideal", and avoid using key word "exact"
+</p>
+
+
+<h4>Set audio and video constraints for the browser</h4>
+For the purpose can be used setConstraints() method to set (or replace previously
+used) audio or video constraints for getUserMedia() method<br>
+Constraints can be set for audio (microphone) or video (camera) device.
+
+<p>
+It is important to use supported constraints and values ranges, or use optional constraints format<br>
+otherwise during call opening (in WebRTC method getUserMedia) will be <strong>over constrained error</strong>.
+<br> 
+See also 
+<a href="https://developer.mozilla.org/en-US/docs/Web/API/Media_Streams_API/Constraints">Capabilities, constraints, and settings</a>
+</p>
+
+<h5>setConstraints() method parameters</h5>
+<ul>
+<li>
+   browser [string]:<br>
+   <ul>
+   <li>
+   null – current browser.
+   </li>
+   <li>
+   browser name, one of 'chrome', 'firefox', 'safari', 'other'
+   </li>
+   <li>
+   browser name, vertical line, OS name <br>
+   OS name one of 'windows', 'android', 'macos', 'ios', 'linux', 'other'<br>
+		
+   'chrome|windows', 'chrome|macos', …<br>
+	</li>
+	</ul>
+<br>
+During SDK initialization it get current browser name, and OS name.<br>
+They can be obtained using phone.getBrowser() and phone.getOS()<br>
+When called setConstraints method checked if used browser name or browser-os-name is name of the current browser and OS.<br>
+Otherwise the method is ignored.
+</li>
+<li>
+type [string]  'audio' or 'video'
+</li>
+<li>
+constraints [object] e.g.:<br>
+{ echoCancellation: true }<br>
+{ echoCancellation: { ideal: true } }<br>
+{ echoCancellation: { exact : true } }<br>
+<br>
+</li>
+</ul>
+
+<p>
+Audio contraints example
+</p>
+
+<pre><code>
+let supported = navigator.mediaDevices.getSupportedConstraints();
+let ac = {};
+
+ac_log('Volume is supported: ', supported.volume ? true : false);
+if (supported.volume){
+    ac.volume = 0.7;
+}
+
+ac_log('Echo cancellation is supported: ', supported.echoCancellation ? true : false);
+if (supported.echoCancellation){
+    ac.echoCancellation = true;
+}
+
+if (Object.keys(ac).length > 0){ // Is not empty ?
+    phone.setConstraints(null, 'audio', ac); // null means current browser.
+}
+</code></pre>
+
+
+<p>
+Video contraints example
+</p>
+
+<pre><code>
+let supported = navigator.mediaDevices.getSupportedConstraints();
+let vc = {};
+
+ac_log('webcam facing mode is supported: ', supported.facingMode ? true : false);
+if (supported.facingMode){
+    vc.facingMode = { ideal: 'user' };
+}
+
+ac_log('webcam aspect ratio is supported: ', supported.aspectRatio ? true : false);
+if(supported.aspectRatio){
+    vc.aspectRatio = 1.0;
+}
+
+if (Object.keys(vc).length > 0){ // Is not empty ?
+    phone.setConstraints(null), 'video', vc);
+}
+</code></pre>
+
+<h4>Add or remove single audio or video constraint for currently used browser</h4>
+<p>
+To add or remove single audio or video constraint without modification others
+constraints use setConstraint() method.
+</p>
+
+<pre><code>
+  // Set audio deviceId for getUserMedia()
+  phone.setConstraint('audio', 'deviceId', 'some-device-id-string'); 
+</code></pre>
+
+<pre><code>
+  // Set audio deviceId for getUserMedia() as "exact" constraint
+  // If such device does not exist getUserMedia() promise will be rejected with OverconstrainedError
+  phone.setConstraint('audio', 'deviceId', {exact: 'some-device-id-string'});
+</code></pre>
+
+<pre><code>
+  // Remove audio deviceId for getUserMedia()
+  phone.setConstraint('audio', 'deviceId', null);
+</code></pre>
+
+<h4>Screen sharing</h4>
+
+<p>
+WebRTC supports screen-sharing video stream (See navigator.mediaDevices.getDisplayMedia()).<br>
+We know how to start sending video in audio call, or replace one video track to another in video call.<br>
+We can add custom header to outgoing re-INVITE.<br>
+Combining these techniques, we add screen-sharing support:
+</p>
+
+<p>
+
+<p>
+<pre><code>
+let stream = phone.openScreenSharing()
+</code></pre>
+Create screen-sharing stream using navigator.mediaDevices.getDisplayMedia().<br>
+User should select of sharing type: full screen, some window or browser tab.
+</p>
+
+<p>
+<pre><code>
+phone.closeScreenSharing(stream)
+</code></pre>
+Close screen-sharing stream previously open by openScreenSharing().
+</p>
+
+
+<pre><code>
+call.startScreenSharing(stream)
+</code></pre>
+For audio call it works the same as call.startSendingVideo()<br>
+For video call it replaces sending video track from web camera to screen-sharing video track.
+</p>
+
+<p>
+<pre><code>
+call.stopSreenSharing()
+</code></pre>
+Stop screen-sharing video, it can be also stopped by built-in browser button "Stop sharing".<br>
+For audio call it's the same as call.stopSendingVideo().<br>
+For video call will be restored previously sent video track from web camera.
+</p>
+
+<p>
+Because screen-sharing can be terminated not only by stopScreenSharing(), but also using built-in in browser button, to phone added new callback:
+<pre><code>
+callScreenSharingEnded(call, stream)
+</code></pre>
+The callback used to update GUI<br>
+In multi call phone the same screen-sharing stream can be used in multiple startScreenSharing()<br>
+The callback allows you to keep the usage counter and close the stream if no call is using it.
+<br>
+</p>
+
+<p>
+For other side screen-sharing video is usual video.<br>
+To notify the other side that a screen-sharing video is being sent,<br>
+the client sends re-INVITE with the special header:<br>
+X-Screen-Sharing: on<br>
+or<br>
+X-Screen-Sharing: off<br>
+<br>
+If call was replaced, it means the same as X-Screen-Sharing: off.
+</p>
+
+<p>
+After page reloading screen-sharing will be restored if the user approves it.
+</p>
+<p>
+Please see the API usage in single call and multi call phone prototypes. 
+</p>
+
+
+<h4>SUBSCRIBE dialog</h4>
+
+<p>
+In SDK 1.15 added generic SIP SUBSCRIBE dialog<br>
+Used our subscriber/notifier JsSIP extension <a href="https://github.com/versatica/JsSIP/issues/708">https://github.com/versatica/JsSIP/issues/708</a>.<br>
+<br>
+Please see usage example in single call phone prototype and phone prototype with ACD.
+</p>
+
+
+<h2>Phone prototype with an answering machine</h2>
+<p><a href="5.phone_prototype_aam">Run phone prototype with an answering machine</a></p>
+<p>Added feature:</p>
+<ul>
+<li>Automatic Answering Machine</li>
+</ul>
+
+
+<p>
+When a user doesn't answer an incoming call for a set number seconds,<br>
+the answering machine will take its place and answer the call.
+</p>
+
+<p>
+First, a greeting message is played.<br>
+The phone has a default greeting,<br>
+or the user can record a custom greeting using their microphone.
+</p>
+
+
+<p>
+Then a beep sound is played.<br>
+The calling party can now record a voice message and hang up.<br>
+The maximum voice message time is limited.
+</p>
+
+<p>
+The recorded message is stored in indexeddb, and will not be lost after the page reload.<br>
+There is a visual notification that the phone
+received a new voice message.<br>
+(In our example we changed the color and border color of the button 'Answering Machine')
+</p>
+
+
+In the panel of the answering machine, the user can:
+<ul>
+<li>Turn the machine on or off.</li>
+<li>Set a time delay before the start of the operation.</li>
+<li>Set the maximum time of the recorded message.</li>
+<li>Record the custom greeting, or erase it and use the default.</li>
+<li>Listen and delete the recorded messages.</li>
+</ul>
+
+<p>
+To implement answering machine the following was used:
+<ul>
+<li>MediaRecorder API (see class AudioRecorder in utils.js)</li>
+<li>IndexedDB support of values with data blob (see class VoiceDb)</li>
+<li>
+    WebRTC 1.0 API replaceTrack to switch audio sender from microphone to the audio player,
+    without SIP renegotiation.<br>
+    (see class AnsweringMachine, method prepare)
+</li>
+<li>
+    Reassignment playing from speaker to audio stream.<br>
+    (See class AnsweringMachine, method playGreeting, play parameter: <strong>streamDestination</strong>)
+</li>
+<li>
+    Added small delay before playing the greeing.<br>
+    Without the delay WebRTC API "swallows" the beginning of the greeting message.<br>
+    (See class AnsweringMachine, method playGreeting, play parameter: <strong>startDelay</strong>)
+</li>
+</ul>
+</p>
+
+<p>
+Because an answering machine complicates the code, and isn't needed
+for all custometers, this is done as a separate example.
+</p>
+
+<h2>Phone prototype with OAuth2 authorization</h2>
+
+<p><a href="6.phone_prototype_oauth">Run phone prototype with OAuth2</a></p>
+<p>Added feature:</p>
+<ul>
+<li>Authorization using OAuth2</li>
+</ul>
+<p>
+For this example we're using <a href="https://www.keycloak.org/">Keycloak server</a>;
+an open source software specializing in Identity and Access Management.
+</p>
+
+<p>
+The JavaScript phone uses the provided keycloak.js adapter<br>
+</p>
+
+
+<h4>Changes in comparison with the phone prototype example</h4>
+
+<ul>
+    <li>HTML setting_panel
+       <ul>
+          <li>Removed "Account settings" as it is unnecessary in this version.<br>
+              The user name and display name are provided by the Keycloak server.<br>
+          </li>
+
+          <li> Added logout button.</li>
+       </ul>
+    </li>
+
+    <li>Added global variables:
+       <ul>
+         <li><strong>keycloak:</strong> Reference to Keycloak server adapter.</li>
+
+         <li><strong>authServerConfig:</strong> Authorization server address and parameters.</li>
+
+         <li><strong>authLoginPostponed:</strong> boolean flag.<br>
+         Set when the updateToken action has failed,<br>
+         and Keycloak requires a re-login to authorize the user.<br>
+         The re-login directs the user to a keycloak server HTML page for<br>
+         security purposes, so it can't be done while in an active call.<br>
+         In this case we'll wait until the call ends.
+         </li>
+
+         <li><strong>authTests:</strong> string with SBC test names.<br>
+         Allows you to send an invalid access token, using the REGISTER or INVITE message.<br>
+         To disable all tests set an empty string value.<br>
+         </li>
+       </ul>
+    </li>
+
+    <li>Changed phone starting sequence
+       <ul>
+          <li>
+          Starting out, we call the keycloak adapter initialization to connect<br>
+          to the keycloak server, login, and download the user profile.
+          </li>
+          <li>
+          After which it is called SIP stack initialization.<br>
+          </li>
+       </ul>
+    </li>
+
+    <li>Added checking of SIP response codes for INVITE and REGISTER to detect authorization
+        problems.
+    </li>
+</ul>
+
+<h4>Keycloak adapter initialization</h4>
+
+<pre><code>
+let authServerConfig = { url: 'https://webrtcoauth.example.com/auth',
+                         realm: 'demo',
+                         clientId: 'demoClient'};
+
+
+function initializeAuthServer() {
+    ac_log('keycloak: create adapter');
+    keycloak = new Keycloak(authServerConfig);
+
+    keycloak.onTokenExpired = () => {
+        ac_log('keycloak: onTokenExpired callback');
+        updateAuthToken();
+    }
+
+    ac_log('keycloak: init()');
+    keycloak.init({ onLoad: 'login-required' })
+        .then(() => {
+            ac_log('keycloak: initialized');
+            return keycloak.loadUserProfile();
+        })
+        .then(() => {
+            // To disable auto call login() if updateToken() fails.
+            keycloak.loginRequired = false;
+
+            userAccount = {
+                user: keycloak.profile.username,
+                password: '',
+                displayName: keycloak.profile.firstName + ' ' + keycloak.profile.lastName
+            }
+
+            phone.setOAuthToken(keycloak.token);
+
+            initializePhone();
+        })
+        .catch((err) => {
+            ac_log('keycloak: initialization error', err);
+        });
+}
+</code></pre>
+
+
+<h4>When using a keycloak adapter, the phone is no longer a Single Page Application (SPA).</h4>
+<p>
+The first call to <strong>keycloak.init()</strong> sends the user to a Keycloak server HTML page
+where the user will enter a name and a password.<br>
+Afterwards they’ll be redirected to the page with the phone.<br>
+Loading the phone page calls keycloak.init again but following entering the credentials, it will not redirect the user to a login page.
+</p>
+<p>
+Depending on the configuration of the server, the user name and password are rarely required (approximately once every 2 weeks)
+</p>
+<p>
+In subsequent calls of the phone page HTML, keycloak.init() will load the phone page directly instead of redirecting to the Keycloak server.<br>
+It will be performed without entering the password, but still adds a few seconds to the startup.
+</p>
+
+<h4>REGISTER with access token example</h4>
+
+<p>
+The keycloak.js adapter provides a short-lived access token for SBC authorization.
+That includes authorization for SIP REGISTER and INVITE messages using an Authorization SIP header.
+</p>
+
+
+<p>
+<pre><code>
+REGISTER sip:audiocodes.com SIP/2.0
+Via: SIP/2.0/WSS kiagrmh8pngt.invalid;branch=z9hG4bK3892878
+Max-Forwards: 69
+To: &lt;sip:johndoe@audiocodes.com&gt;
+From: "JohnDoe" &lt;sip:johndoe@audiocodes.com&gt;;tag=t831p2e9jk
+Call-ID: prladr5faj5nqtpo5f7sun
+CSeq: 14 REGISTER
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUdDl1TF9Ya0hSampFR2NUZFRlYXZ0dmxTc0pXYWplRHhIR1MzL
+ XlVazhZIn0.eyJqdGkiOiJmOTVmYWEzZC02N2YxLTRmYjEtODlmOC1hMzQ5ZTc0Y2FlNzMiLCJleHAiOjE1MzEwNTQ4NjYsIm5iZiI6MCwiaWF0IjoxNTMxMDU
+ 0MjY2LCJpc3MiOiJodHRwczovL3dlYnJ0Y29hdXRoLmF1ZGlvY29kZXMuY29tL2F1dGgvcmVhbG1zL2RlbW8iLCJhdWQiOiJXZWJSVENEZW1vIiwic3ViIjoiM
+ jQxZjlkNWEtMzhhNC00Y2Q1LTlhOWItYzBhYjIxNzJkZDZiIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiV2ViUlRDRGVtbyIsIm5vbmNlIjoiMzBhYTdhYWEtMjd
+ jMC00NDAwLTllYjQtY2Y2NmQwZjQxYmM4IiwiYXV0aF90aW1lIjoxNTMxMDU0MjU3LCJzZXNzaW9uX3N0YXRlIjoiM2NlZDVhNmQtZjkwYy00NjU0LWIwYWItM
+ DNjNmU5MTcxNWU0IiwiYWNyIjoiMCIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJ1bWFfYXV0aG9yaXphdGlvbiJ
+ dfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZ
+ mlsZSJdfX0sIm5hbWUiOiJIYWlmYTEgVXNlcjEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJoYWlmYXVzZXIxIiwiZ2l2ZW5fbmFtZSI6IkhhaWZhMSIsImZhbWl
+ seV9uYW1lIjoiVXNlcjEiLCJlbWFpbCI6ImhhaWZhdXNlcjFAZXhhbXBsZS5jb20ifQ.hTnVH-wKGlPDwBreK6c2hxgxZq5jBd9FWplrfRzXHt6wm5cMbbGuJg
+ myJtlcVXueCh9KgFgVe6T9i7VPrtmmgCCVLMOqKSRHZkQn6xcb52Ua0NO8v66qqZKzGToKAXNoJJBOzv8s0iFpxojbu0ZgRYzTkdNtNq2YAbsNfrQRYAPKtBZA
+ Qdcm6alkU1YYqh4BVhEk5MehXYerQj8B8KmwzkmNTwJc34EhZ1CkFbyOO3bqumwSTPo4eOVDhcA82q8J4dw3kDkKZh9RpaV4RLsv-5FngPjX1CGMwFqsHd4EZ_
+ v62nvrKLm3JxHMu1GLQGuhFwjw37iqaxL8XdWaHssLkA
+Contact: &lt;sip:5g8glmd1@kiagrmh8pngt.invalid;transport=ws&gt;;+sip.ice;reg-id=1;+sip.instance="<urn:uuid:8e95255b-c021-45d3-be78-2e881295f6d3>";expires=600
+Expires: 600
+Allow: INVITE,ACK,CANCEL,BYE,UPDATE,MESSAGE,OPTIONS,REFER,INFO
+Supported: path,gruu,outbound
+User-Agent: AudioCodes WebRTC phone
+Content-Length: 0
+</code></pre>
+</p>
+<br>
+<h4>Access token updating</h4>
+<p>
+Depending on the configuration of the server,
+the short-lived access token will expire after a set amount of time had elapsed
+(e.g. every 10 minutes), and will need to be updated by the keycloak server.
+
+The function is called when:
+<ul>
+  <li>access token will expire soon</li>
+  <li>REGISTER authorization has failed</li>
+  <li>INVITE authorization has failed</li>
+</ul>
+</p>
+
+<pre><code>
+function updateAuthToken() {
+    ac_log('keycloak: updateToken()');
+    return keycloak.updateToken(-1)
+        .then((refreshed) => {
+            if (!refreshed) {
+                ac_log('keycloak: token is still valid');
+                return;
+            }
+            ac_log('keycloak: token is refreshed');
+            phone.setOAuthToken(keycloak.token); // set access token for AudioCodes API.
+        })
+        .catch((e) => {
+            ac_log('keycloak: Failed to refresh the access token', e);
+            if (activeCall !== null && activeCall.isEstablished()) {
+                ac_log('keycloak: re-login needed. Postponed because there is an active call.');
+                authLoginPostponed = true;
+            } else {
+                ac_log('keycloak: login()');
+                keycloak.login();
+            }
+        });
+}
+</code></pre>
+
+
+<h4>Test mode</h4>
+<p>
+To test the SBC, a test mode has been added.
+The test mode allows you to send REGISTER and INVITE SIP messages
+without an Authorization header, or with Authorization header that
+ contains an incorrect access token value.
+</p>
+
+<p>
+To enable the test mode, start the phone, open JavaScript console, and type:<br>
+
+<pre><code>
+    localStorage.setItem('authTests', 'r1 i1');  // set r1 and i1 test
+</code></pre>
+Then reload the phone page.<br>
+When the test mode is used, the console will display:<br>
+
+<pre><code>
+    Warning: USED PHONE TEST MODE: authTests='r1 i1'
+</code></pre>
+
+</p>
+
+<p>
+This can be set for one or more test names. Use space as the delimiter between test names.
+</p>
+
+Implemented tests:
+<ul>
+<li><strong>user</strong> in SIP messages, use the wrong user name of phone owner.<br>
+    When using an incorrect user name, SIP authorization will always fail.
+</li>
+<li><strong>r1</strong> use in 1st REGISTER with an incorrect token value.</li>
+<li><strong>i1</strong> use in initial INVITE with incorrect token value.</li>
+<li><strong>r0</strong> don't set to the 1st REGISTER Authentication header</li>
+<li><strong>i0</strong> don't set to the initial INVITE Authentication header.</li>
+</ul>
+</p>
+
+<p>
+To disable the test mode, start the phone, open JavaScript console, and type:<br>
+</p>
+<pre><code>
+    localStorage.removeItem('authTests');
+</code></pre>
+<p>
+And then reload the phone page.
+</p>
+<p>
+In a production version, instead of loading the authTests value from local storage,
+ set an empty string value or completely remove the pieces of code marked with 'test code' comments.
+</p>
+
+<h2>Phone prototype with Automatic call distributor (ACD) </h2>
+<p><a href="7.phone_prototype_acd">Run phone prototype with ACD</a></p>
+<p>Added feature:</p>
+<ul>
+<li>Work with ACD system</li>
+</ul>
+
+In this example SIP SUBSCRIBE dialogs used to work with the automatic call distributor (ACD) server.
+</p>
+
+<p>
+To parse XML used Scott Means's <strong>Pure JavaScript XML parser</strong> <a href="https://github.com/smeans/pjxml">https://github.com/smeans/pjxml</a><br>
+MIT license<br>
+The code converted to classes syntax.
+</p>
+
+<h2>Multi call phone prototype</h2>
+<p><a href="8.multi_call_phone_prototype">Run multi call phone prototype</a></p>
+<p>Added features:</p>
+<ul>
+<li>Multi call support</li>
+<li>Blind call transfer (more natural implementation)</li>
+<li>Attended call transfer</li>
+<li>Audio conference</li>
+<li>Video conference</li>
+</ul>
+
+<p>
+Provided API supports multi calls.<br>
+Before we did not use this opportunity in phone prototypes,<br>
+because it is significantly complicates GUI and rarely necessary.
+</p>
+
+<p>
+Nevertheless it is necessary for 3 way conference and atteneded call transfer.
+</p>
+
+<p>
+<h4>GUI scheme</h4>
+<ul>
+<li>Status line.</li>
+<li>Lines buttons. To select line and show each line status (free, active, or in hold)</li>
+<li>Call panel for selected line.</li>
+<li>Remote video of all lines receiving video. Optional local video for selected line.</li>
+<li>Optional video conference settings and canvas with mixed video from all lines.</li>
+</ul>
+</p>
+
+<h4>Conference</h4>
+<p>
+The conference model is very simple:<br>
+if the phone is in conference mode,<br>
+all callers are in the same conference room and hear (and see) each other.
+</p>
+<p>
+All newer calls will be added to this conference room.
+</p>
+<p>
+Conference mode can be changed during its operation: audio, audio and video or switched off.
+</p>
+
+
+<h4>Audio conference</h4>
+<p>
+To implement audio conferencing we’ll need to mix audio streams.<br>
+There is an Audio Context API that can help us achieve that.
+</p>
+
+<p>
+It used to work exclusively in Mozilla’s Firefox browser, and not in Google’s Chrome browser.<br>
+Finally, in 2019 Chrome’s bug on the subject was fixed. (See Chromium issue 121673, reported in 2012)<br>
+Now we can implement audio conferencing via Google Chrome as well.
+</p>
+
+<p>
+In the WebRTC phone, the microphone generates audio stream that is sent to a remote phone.<br>
+To create a conference we will replace it to an audio mixer stream.
+</p>
+
+<p>
+Let's consider for example 3-way conferences.
+</p>
+
+<p>
+We have 2 open calls:<br>
+1st call A - B<br>
+2nd call A - C<br>
+</p>
+
+<p>
+In normal phone mode, A send its microphone stream to B and C.<br>
+To create an audio conference:<br>
+The 1st call will send to B an audio stream containing audio mixed from the microphone and audio received from C.<br>
+The 2nd call will send to C an audio stream containing audio mixed from the microphone and audio received from B.<br>
+</p>
+
+<p>
+So here we’ll use 2 audio mixers (one mixer per each call).<br>
+We cannot use a single audio mixer to mix all streams and send it to all remote calls because then the remote user will receive and hear their own echo.
+</p>
+
+<p>
+Similarly, we can create conferences this way that will include more participants.<br>
+For each call we will send an audio stream mixed from the microphone and other calls.
+</p>
+
+<p>
+Note: about tracks and streams.<br>
+  A known problem is that some Web APIs use only streams and others will use only tracks.<br>
+  The stream contains an audio track, or an audio track and a video track.
+</p>
+
+<p>
+  WebRTC API supports streams with 2 or more audio tracks.<br>
+  We don't use that (the possibility of sending multiple tracks) for conferencing, instead we send a single stream containing a single audio track (with its audio mixed)
+</p>
+
+<p>
+  For audio calls, the phone sends a local stream to a remote phone.<br>
+  When we create a local stream we call WebRTC getUserMedia API (use only stream)<br>
+  The stream contains the microphone audio track.<br>
+  To mix the microphone’s audio with the remote side’s audio we use an Audio Context API (use only streams)<br>
+  Then we get from the mixed stream an audio track and call the WebRTC sender method to replace the track (use only track)<br>
+</p>
+
+
+
+<h4>Video conference</h4>
+
+<p>
+Work with video streams creates a heavy load on the processor so we’ll use a single video mixer for all calls to mix all incoming video streams and the local camera stream.
+</p>
+
+<p>
+The same mixed video stream will be sent to all remote calls.<br>
+Each participant will see other participants including themselves (serving as an analogue to the audio conference’s echo).
+</p>
+
+<p>
+The browser API is bizarre; we can’t simply mix the video streams the way we do for audio.<br>
+We’ll need to split the video streams to sequences of pictures,
+draw them in canvas, using some layout,<br>
+and then recreate the mixed stream from the picture sequence.
+</p>
+
+<p>
+User can change the parameters of the video conference during its operation:<br>
+the size of the call's picture, the pictures layout (linear or compact)<br>
+and the number of frames per second (FPS).<br>
+CPU usage varies significantly depending on size and FPS.
+</p>
+
+<h4>Audio and video mixer</h4>
+
+<p>
+To implement audio and video conference were added class CallAudioMixer and CallVideoMixer (see: utils.js)<br>
+Them use the same class "call" as other API, with one addition:<br>
+in the call instance must be defined integer variable call.data['_line_index']
+</p>
+
+<p>
+<pre><code>
+class CallAudioMixer {
+    // For each call created audio mixer instance.
+    // Аudio context can be taken from audio player.
+    constructor(audioCtx, call)
+
+    // Close mixer, release all resources.
+    close()
+
+    // Get mixed audio stream
+    getMix()
+
+    // Add call to mixer.
+    // Returns true if added, false if the call is already added.
+    add(call)
+
+    // Remove call from mixer
+    // Returns true if removed.
+    // Returns false, if the call was not added, or cannot be removed, because set in constructor.
+    remove(call)
+
+    // Returns string with calls list
+    toString()
+}
+</code></pre>
+</p>
+
+<p>
+<pre><code>
+class CallVideoMixer {
+    // Used single instance for all calls.
+    constructor()
+
+    // Set canvas id.
+    // Set local video element id.
+    // Set remote video element id prefix. (will be added video element index 0, 1, ...)
+    setElements(canvasId, localVideoId, remoteVideoId)
+
+    // Set number of frames per seconds of mixed stream.
+    // For example: 1, 2, 5, 10, 20, 50.
+    // Default: 10
+    setFPS(v)
+
+    // Set calls video layout: 'linear' or 'compact'
+    // Default: 'compact'
+    setLayout(v)
+
+    // Set call video size (pixels)
+    // Default w=160, h=120
+    setSize(w, h)
+
+    // Set call video size (pixels)
+    // size likes: {width: '160px', height: '120px'}
+    setSizes(size)
+
+    // Returns true when mixer is started
+    isOn()
+
+    // Start mixer
+    start()
+
+    // Stop mixer, remove all calls, release resources.
+    // After using stop the mixer can be restarted.
+    stop()
+
+    // Get mixed video stream for added call.
+    getMix(call)
+
+    // Add call to mixer or update send/receive mode.
+    // Returns true if send video was added (should be replaced connection sender track)
+    add(call, send = true, receive = true)
+
+    // Remove call from mixer.
+    // Returns true if removed, false if was not added.
+    remove(call)
+
+    // Resize video layout then changed number of video channels
+    // Used when added/removed local video channel.
+    // Called automatically in methods: add, remove, setLayout, setSize
+    //
+    // Warning: it's designed for 5 lines phone !
+    // Max number of video controls is 6 (including local video)
+    // If you use more lines, please modify this method.
+    resize()
+
+    // Returns string with calls list
+    toString()
+}
+</code></pre>
+</p>
+
+<h4>Phone conference functions</h4>
+
+<p>
+The functions work with audio and video mixers and replace connection sender track to mixed stream track,<br>
+or restore original sender track.
+</p>
+
+<p>
+<pre><code>
+// GUI switch conference mode: off, audio, audio and video
+function guiConferenceSwitch()
+
+// Start audio conference
+function conferenceStartAudio()
+
+// Stop audio conference
+function conferenceStopAudio()
+
+// Start video conference
+function conferenceStartVideo()
+
+// Stop video conference
+function conferenceStopVideo()
+
+// Add call to conference (audio or audio/video)
+function conferenceAdd(call)
+
+// Remove call from conference (audio or audio/video)
+function conferenceRemove(call)
+
+// Assign line video stream from camera to local video element.
+// Used line set as argument or the first line that send video.
+conferenceSetLocalVideo(lineIndex = -1)
+
+// Print in console conference information.
+function conferencePrint()
+</code></pre>
+</p>
+
+<h2>Citrix desktop phone prototype</h2>
+<p>
+<a href="9.phone_prototype_citrix">Run Citrix desktop phone prototype</a>
+</p>
+
+<p>
+Citrix provides WebRTC Redirection SDK. The SDK can be used to build Electron applications or browser single page applications (SPA). If you use Citrix desktop, see: <a href="https://www.citrix.com/">citrix.com</a>
+</p>
+<p>
+Note: Browser SPA only supports audio calls.
+</p>
+
+<h4>Citrix SDK conversion</h4>
+<p>
+The Citrix SDK file CitrixWebRTC.js (or CitrixWebRTC.min.js) is a Node module. To use it in the browser, it must be converted.
+</p>
+<p>
+Notes: 
+<ul>
+<li>Use the latest Citrix SDK release.</li>
+<li>The file CitrixWebRTC.js used in this example was taken from the SDK beta release and could become obsolete.</li>
+</ul>
+
+<pre><code>
+  npm install --global browserify
+  browserify CitrixWebRTC.js --outfile browserifyCitrixWebRTC.js
+</code></pre>
+
+<h4>JsSIP modification</h4>
+<p>
+Citrix API is very close to standard WebRTC API, but not 100% compatible. Therefore, Citrix API JsSIP must be modified.
+</p>
+<p>
+Note:
+We replaced a few WebRTC API functions to Citrix analogs. Review python script source to see replaced functions.
+</p>
+
+<h5>To convert AudioCodes SDK</h5> 
+<p>
+<ol>
+<li>Install Python3.</li>
+<li>Run the following script:
+<pre><code>
+py citrix_convert.py &lt;ac_webrtc.min.js &gt;citrix_ac_webrtc.min.js
+</code></pre>
+</li>
+<li>For debugging, you can replace the obfuscated ac_webrtc.min.js file with the non-obfuscated files acapi.1.?.0.js and citrix_jssip.js</li>
+</ol>  
+</p>
+
+<h5>To build citrix_jssip.js</h5>
+<pre><code>
+   py citrix_convert.py &lt;jssip.js &gt;citrix_jssip.js
+</code></pre>
+<br>
+
+<h4>Citrix cloud Windows configuration</h4>
+
+<p>
+<h5>To enable the Citrix SDK</h5>
+<p>
+You must set registry in remote Citrix Windows system. Edit Windows registry (use regedit.exe command).
+</p>
+
+<ol>
+
+<li>Enable Citrix redirection
+<pre><code>
+Key Path: HKCU\Software\Citrix\HDXMediaStream
+Key Name: MSTeamsRedirSupport
+Key Type: DWORD
+Key Value: 1
+</code></pre> 
+</li>
+
+<li>Add the Chrome program to the allow list.
+<pre><code>
+Key Path: HKLM\Software\WOW6432Node\Citrix\WebSocketService
+Key Name: ProcessWhitelist
+Key Type: MULTISZ
+Key Value: chrome.exe
+</code></pre> 
+</li>
+
+<li>[Optionally] Configure Citrix logging.
+<pre><code>
+Key Path: Computer\HKEY_CURRENT_USER\Software\Citrix\HDXMediaStream
+Key Name: WebrpcLogLevel
+Key Type: DWORD
+Key Value: 0
+</code></pre> 
+
+Log created in local (not  remote !) computer in the directory %temp%\HdxRTCEngine<br>
+For each RTP session created subdirectory with timestamp.<br>
+<br>
+To see log:
+<pre><code>
+   cd %temp%\HdxRTCEngine
+</code></pre>  
+and select log according timestamp.
+</li>
+
+</ol>
+
+</p>
+
+<h5>Configure microphone privacy settings</h5>
+<p>
+In Citrix Desktop Windows, open "microphone privacy setting" and enable microphone usage.
+</p>
+
+
+<h4>Modification simple phone prototype</h4>
+
+<p>
+The provided Citrix phone prototype is a modified simple phone prototype.<br> 
+Please compare the simple phone prototype code with this version.
+</p>
+<ul>
+<li>Support for video calls removed.</li>
+<li>Citrix API in phone.js was used.</li>
+</ul>
+
+<p>
+Note: The phone.js and citrix_jssip.js does not call the Citrix API directly, but via the citrix_adapter.js wrapper.
+</p>
+
+
+
+<h4>How Citrix phone starts</h4>
+<ol>
+<li>Phone waits for the initialization of the Citrix SDK.<br>
+Note: There will be error if the browser did not start in Citrix desktop or the desktop is not configured.
+</li>
+<br>
+<li>
+Phone uses the Citrix API to collect available microphones and speakers.<br>
+</li>
+<br>
+<li>
+Phone selects microphone and speaker.<br>
+Citrix API does not work without selected devices
+<ul>
+<li>getUserMedia requires microphone deviceId constraints.</li>
+<li>AudioElement requires speaker deviceId to be assigned to sinkId.</li>
+</ul>
+</li>
+<br>
+<li>
+Phone attempts to use the same microphone and speaker that were selected before.<br>
+Note: This does not always work, for example:
+<ul>
+<li>When the user detached the USB headset that was previously used.</li>
+<li>When the phone starts up for the first time.</li>
+</ul>
+In such cases the settings screen opens, allowing the user to select the microphone and speaker.
+</li>
+<br>
+<li>phone starts JsSIP stack and works in the same way as other phone examples.</li>
+</ol>
+
+
+<h2>Device selection (microphone, camera, speaker)</h2>
+
+<p>
+It would seem that it could be easier?<br>
+Get a list of devices (microphones, cameras, speakers).<br>
+Choose the preferred one of each type.<br>
+Then we use the device ID of the selected devices.
+</p>
+
+<p>
+For input devices (microphone and camera) we use the device ID in getUserMedia constraints.
+
+<pre><code>
+     getUserMedia({audio: { deviceId: "speaker-device-id" }});
+     getUserMedia({video: { deviceId: { ideal: "camera-device-id"} }}
+     getUserMedia({audio: { deviceId: { exact: "speaker-device-id"} }}
+</code></pre> 
+                
+For output audio devices (speaker) we use audio element setSinkId() method.
+</p>
+
+However, it's really not that easy:
+
+<ul>
+<li>Browser and OS implementations are different.<br>
+   iOS does not provide output audio devices and uses system default.<br>
+   Firefox don't enumerate output audio devices.<br>
+   audio element setSinkId can be not implemented in some browsers - before usage
+   we should check if it's implemented.
+
+<pre><code>
+    if (audioElement.setSinkId)
+        audioElement.setSinkId(deviceId);
+</code></pre> 
+</li> 
+<br>
+
+<li>The selected device can be disconnected. 
+   Especially if using USB or bluetooth headset.
+
+If disconnected while the phone page is open, this can be detected using "devicechange" listener.
+</li>
+<br>
+
+<li>Device list can be used as browser fingerprint.<br>
+   For this reason, WebRTC API provide a complete list of devices, 
+   only if you open getUserMedia stream (for Chrome if set the device usage permission)
+</li>
+<br>
+   
+<li>You can detect if the device list incomplete if device labels are empty string ("")<br>
+   If device list is incomplete some devices can be removed (e.g. there is single camera instead rear and front cameras)
+</li>
+</ul>
+
+<p>
+When we start the phone we usually don't use getUserMedia.<br>
+(It will look strange, we are not calling anywhere, but we are already asking permission to use the microphone and camera)
+</p>
+
+<p>
+In this case, we will get an incomplete list of devices, in which there will be no devices selected in the previous browser session.<br>
+In our examples, in this case, we add the devices selected the previous time to the list of devices.
+</p>
+
+<p>
+Тhis approach will work if the previously selected device is connected.
+</p>
+
+<p>
+However, if it removed, then it all depends on what constraints we use.
+If we use the ideal constraint: 
+</p>
+
+<p>
+<pre><code>
+    getUserMedia({audio: deviceId: { ideal: "device-label" }})
+</code></pre> 
+In the absence of this device, the default device will be used.
+</p>
+
+<p>
+However, if we use exact constraint and device is missed, there will be an exception:
+OverconstrainedError {name: 'OverconstrainedError', message: '', constraint: 'deviceId'}
+<pre><code>
+    getUserMedia({video: deviceId: { exact: "camera-id" } });
+</code></pre>
+</p>
+
+<p>
+We provide utils.js SelectDevices class which collects and stores a list for all available devices.<br>
+The class used in single call, multi call phone prototype and Citrix phone.
+</p>
+<h4>Device selection in different browsers and operating systems</h4>
+<pre><code>
+Browser|OS       Microphone  Camera  Speaker     Note
+
+chrome|windows   +microphone +camera +speaker 
+chrome|macos     +microphone +camera +speaker 
+chrome|linux     +microphone +camera +speaker
+chrome|android   +microphone +camera +speaker   In modern Android enumerated all speakers, in obsolete (e.g. Android 9) only latest added.
+chrome|ios       +microphone +camera -speaker   Speaker cannot be reassigned.                            
+
+firefox|windows  +microphone +camera -speaker   Speaker cannot be reassigned. 
+firefox|macos    +microphone +camera -speaker   Speaker cannot be reassigned. 
+firefox|linux    +microphone +camera -speaker   Speaker cannot be reassigned. 
+firefox|android  +microphone +camera -speaker   Speaker cannot be reassigned
+firefox|ios      +microphone +camera -speaker   Speaker cannot be reassigned.
+
+safari|macos     +microphone +camera -speaker   Speaker cannot be reassigned. 
+safari|ios       +microphone +camera -speaker   Speaker cannot be reassigned. 
+
+other|other           ?        ?       ?        We did not check some OS, e.g. Chrome OS.
+</code></pre>
+
+<h2>Change codecs priorities. Remove codecs</h2>
+
+<p>
+RTCRtpTransceiver.setCodecPreferences() method using to removing or changing codecs priorities.<br>
+The method is not implemented in Firefox.
+</p>
+
+In our SDK we provide method: phone.setCodecFilter().
+<br>
+<p>
+Codec set as name, e.g. 'pcma'  (case insensitive)<br>
+name with frequency  e.g. 'pcma/8000'<br>
+name, optional frequency and fmtp: e.g: 'VP9/90000#profile-id=0'or 'VP9#profile-id=0'  
+</p>
+
+<p>
+
+
+<h4>Change codecs priorities</h4>
+
+<p>
+Make PCMU, PCMA codecs more priority than OPUS.
+<pre><code>
+    phone.setCodecFilter({ 
+        audio: { priority: ['pcmu', 'pcma'] }
+    });
+</code></pre>
+</p>
+
+<p>
+Modify video codecs priorities.
+<pre><code>
+    phone.setCodecFilter({ 
+        video: { priority: ['av1', 'vp9', 'vp8'] }
+    });
+</code></pre>
+</p>
+
+<h4>Removing codecs</h4>
+
+<p>
+Note: It’s not recommended!
+<br>
+It is better to keep all browser-provided codecs to ensure compatibility with different browsers and operating systems.
+</p>
+
+<p>
+Remove ISAC and G722 audio codecs.
+<pre><code>
+    phone.setCodecFilter({
+        audio: {
+             remove: ['isac', 'g722'],
+        }
+    });
+</code></pre>
+</p>
+
+
+<p>
+All codec filters must be set once.<br>
+Here is a more complicated example<br>
+<pre><code>
+    phone.setCodecFilter({
+        audio: {
+            remove: ['isac', 'g722'],
+            priority: ['pcma', 'pcmu']
+        },
+        video: {
+            remove: ['h264', 'vp9#profile-id=2', 'av1', 'ulpfec'],
+            priority: ['vp9', 'vp8']
+        } 
+    });
+</code></pre>
+</p>
+
+
+<h2>Call quality score</h2>
+A functionality has been added to Mediant SBC that evaluates the sound quality after a call is completed.<br>
+If this option is enabled, then after the call the web client will receive out of dialog SIP NOTIFY with 
+customer header <strong>X-VoiceQuality</strong> which includes a voice quality.<br>
+Take a look to phone prototype code:
+<pre><code>
+incomingNotify: function (call, eventName, from, contentType, body, request) {
+    ac_log(`phone>>> incoming NOTIFY "${eventName}"`, call, from, contentType, body);
+    if (call === null) { // out of dialog NOTIFY
+        if (eventName === 'vq') { // voice quality event
+            let vq = getXVoiceQuality(request); // X-VoiceQuality header parser, defined in file utlis.js
+            if (vq) {
+                ac_log(`NOTIFY: "X-VoiceQuality" header: score="${vq.score}", color="${vq.color}"`);
+            }
+        }
+    }
+	. . . .
+</code></pre>
+Score is small integer value and corresponding color:
+<ul>
+<li>green - good quality</li>
+<li>yellow - fair quality</li>
+<li>red - low quality</li>
+<li>gray - N/A (cannot calculate score)</li>
+</ul>
+
+<h2>Click-to-call test call</h2>
+At the request of customers, a test call was added to the click-to-call phone.<br>
+If set testCallEnabled:true in the file config.js will be shown additional button "Test line".<br>
+"Test call" is call to a special SBC user configured to automatically answer and send an audible prompt.<br>
+<br>
+To trigger Mediant SBC to evaluate the call quality to INVITE added custom Header:<strong>X-AC-Action: test-voice-quality</strong><br>
+To request URL added call duration (milliseconds) parameter <strong>;duration=10000</strong><br>
+After the specified interval has expired, the SBS terminates the call and sends BYE
+with header:<strong>X-VoiceQuality</strong> which includes a quality score.
+
+<h2>Hidden page timer throttling</h2>
+<p>
+All modern browsers use timer throttling for hidden page.<br>
+If timers for hidden pages work with a resolution of 1 second, this is not a problem for the phone.<br>
+We are concerned about cases when the timer works with a deviation of more than 10 seconds.
+</p>
+
+<p>Since Chrome 88 used intensive timer throttling<br>
+See <a href="https://developer.chrome.com/blog/timer-throttling-in-chrome-88/">Chrome timer throttling</a><br>
+In the mode <strong>timer resolution is 60 seconds !</strong><br>
+<br>
+Safari 14 also uses intensive timer throttling for hidden page.
+</p>
+
+<p>
+Now we have to adapt the SDK to work with such "accurate" timers.
+</p>
+
+<p>
+It turned out that JsSIP itself does not enter to Chrome intensive timer throttling mode, unless you use REGISTER timeout for less than 65 seconds.
+</p>
+
+<p>
+However, if you use our SDK with a websocket keep alive pings with an interval of 10..20 seconds,
+the phone enters to Chrome intensive timer throttling mode.
+</p>
+<p>
+Another way to force the phone to enter this mode is to build its GUI
+based on a framework that uses timers intensively (e.g. for smooth scrolling).
+</p>
+<p>
+JsSIP continues to periodically send REGISTER even when timer works with big delay.<br>
+However, there is a small chance that the phone will not be registered on the SBC 
+for a short period of time (about 30 seconds) before sending the next REGISTER.<br>
+</p>
+
+<p>
+In modified JsSIP used for the SDK, expiration interval has been changed: the REGISTER is sent a little in advance,<br>
+taking into account a possible timer delay of 1 minute.
+</p>
+
+<p>
+For phone developers it is recommended to catch page visibility event,<br>
+and when it is hidden, do not use the timers during this period.<br>
+This will prevent entering to intensive timer throttling mode.
+</p>
+<pre><code>
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopUseTimersInGUI();
+    } else {
+        startUseTimersInGUI();
+    }
+});
+</code></pre>
+
+<p>
+To phone testing/debugging can be used the code that print timer deviation:
+</p>
+
+<pre><code>
+   {
+        let origSetTimeout = setTimeout;
+        setTimeout = (func, delay) => {
+            let key = origSetTimeout((orderTime) => {
+                let calcTime = orderTime + delay;
+                let delta = Date.now() - calcTime;
+                console.log(new Date().toISOString().slice(11, -1) + ' TIMER execute timeout key=' + key + ' delta=' + delta);
+                func()
+            },
+                delay, Date.now());
+            console.log(new Date().toISOString().slice(11, -1) + ' TIMER: setTimeout ', delay, key);
+            return key;
+        }
+        let origClearTimeout = clearTimeout;
+        clearTimeout = (key) => {
+            console.log(new Date().toISOString().slice(11, -1) + ' TIMER: clearTimeout ', key);
+            origClearTimeout(key);
+        }
+        let origSetInterval = setInterval;
+        setInterval = (func, delay) => {
+            let counter = 0;
+            let key = origSetInterval((orderTime) => {
+                counter++;
+                let calcTime = orderTime + delay * counter;
+                let delta = Date.now() - calcTime;
+                console.log(new Date().toISOString().slice(11, -1) + ' TIMER execute interval#' + counter + ' key=' + key + ' delta=' + delta);
+                func()
+            },
+                delay, Date.now());
+            console.log(new Date().toISOString().slice(11, -1) + ' TIMER: setTimeout ', delay, key);
+            return key;
+        }
+        let origClearInterval = clearInterval;
+        clearInterval = (key) => {
+            console.log(new Date().toISOString().slice(11, -1) + ' TIMER: clearInterval ', key);
+            origClearInterval(key);
+        }
+    }
+</code></pre>
+
+<p>
+Can be seen that Chrome when page is hidden uses timer throttling with timer resolution 1 seconds.<br>
+А web phone running on a laptop with a hidden page enters intensive timer throttling after 5 minutes,
+with timer resolution 60 seconds.
+</p>
+
+
+<h4>SDK setWebSocketKeepAlive method</h4>
+
+<p>
+The method code has been rewritten.<br>
+<pre><code>
+setWebSocketKeepAlive(pingInterval, pongTimeout=true, timerThrottlingBestEffort=true, pongReport=0, pongDist=false)
+</code></pre>
+</p>
+
+<ul style="list-style-type: square">
+<li>
+  pingInterval: 
+  <ul>
+    <li> >= 0 Ping interval in seconds. E.g. 10 or 20 seconds.</li>
+    <li> 0 Don't send pings.</li>
+  </ul>
+</li>
+<li>
+  pongTimeout=true (default)
+  <ul>
+    <li>true  Close and reopen websocket after pong timeout</li>
+    <li>false Print warning and continue</li>
+  </ul>
+</li>
+
+
+<li>
+  timerThrottlingBestEffort=true (default)
+  <ul>
+     <li>
+	 false: Print warning if timer throttling is detected. Do not change ping interval.
+	 </li>
+	 <li>
+	 true: (default) For Chrome set internally object:<br> 
+	 {log: 0, chrome: {interval: 1, visibility: true, call: true, log: 1}}<br>
+	 Print warning if timer throttling is detected. Do not change ping interval.
+	 <br>
+	 In previous SDK 1.15 used interval: 62 to increase ping interval and exit from
+	 intensive timer throttling mode. 
+	 Now ping/pong algorithm changed (each received pong reset timer).
+	 Phone don't enter to intensive timer throttling mode because ping/pong keep alive,
+	 so no need increase the ping interval when the throttling is detected.
+     (phone can enter to the mode because used GUI framework)	 
+	 </li>
+	 <li>
+	 Object likes: {log: 0, chrome: {interval: 1, visibility: true, call: true, log: 1}}<br>
+	 For debugging and fine tune.<br><br>
+	 The object {log: 0, chrome: {interval: 1, visibility: true, call: true, log: 1}} 
+	 used internally for timerThrottlingBestEffort=true<br><br>
+	 The object {log: 0} used internally for timerThrottlingBestEffort=false<br><br>
+     Can be used other values, e.g. to print each detected timer throttling in Safari (not only 1st) set:<br>
+	 {log: 1, chrome: {interval: 1, visibility: true, call: true}}<br><br>
+	 
+	 Parameters description:<br>
+	  <ul>
+	  <li>
+	    log: [integer] log level for all browsers<br>
+		<ul>
+		<li>0 print when changed ping interval. Detected timer throttling printed only one time.</li>
+		<li>1 print when changed ping interval and each time when detected timer throttling.</li>
+		<li>2 print all relative events (when changed page visibility or call started/terminated)</li>
+		<li>3 print for each ping timer deviation (milliseconds)</li>
+        </ul>
+	    Levels 2 and 3 for debugging.
+	  </li>
+      
+       <li>
+	    browser names and actions.<br>
+		Can be seen that we do something only for Chrome.
+		 <ul>
+         <li>
+		 interval: [integer] 
+		 if this value is not 0 and is greater than the current ping interval,
+          increased ping interval after timer throttling is detected.
+          To allow Chrome exit from intensive timer throttling mode, the interval must 
+          be more than 60 seconds
+          (it was actually in SDK 1.15, since SDK 1.16 improved ping/pong algorithm don’t switch Chrome
+           to intensive timer throttling mode. No need increases the interval to exit the mode)<br>
+          If programmer want be compatible with SDK 1.15 setting, he can set the interval 62 seconds.
+         </li>		 
+	     <li>
+	     visibility: [boolean] check page visibility<br>
+         when page is visible: use original ping interval value,<br>
+         when page is hidden: use increased ping interval value provided that timer throttling was previously detected.
+         </li>
+	     <li>
+	     call: [boolean] check if there is active call.<br>
+	     if there is active call use original ping interval value.<br>
+	     </li>
+		 <li>
+		 log: [integer] (optional) log level for the browser.<br>
+		 If set overload log value set for all browsers.
+		 </li>
+		 </ul>
+       </li>
+       </ul>	   
+ 	 </li>
+	</ul>
+</li>
+
+
+<li>
+  pongReport=0 (default)<br>
+  <ul>
+    <li> >= 0 Each n pongs print pong report with min and max delays. E.g. 50</li>
+    <li> 0 Don't print pong report.</li>
+  </ul>
+</li>
+<li>
+  pongDist=false (default)
+  <ul>
+    <li> true Add to report also pong delays distribution</li>
+    <li> false. Don't print pong delays distribution</li>
+  </ul>
+</li>
+</ul>
+
+<p>
+Note:<br> 
+To prevents Chrome enter to intensive timer throttling mode mode, can be played a beep each 25 seconds.<br>
+See phone_prototype: audioPlayer.playShortSound
+</p>
+
+<p>
+Safari 14 uses different timer throttling algorithm.<br>
+I don't found its description, but as I see added random timer delays, likes 0..50 seconds for hidden page.<br>
+Increased timer interval does not help, because a page does not exit the timer throttling mode.<br>
+For Firefox and Safari SDK detects big timer deviation (>10 seconds), prints warnings and does nothing.<br>
+If timer delays less than 60 seconds, modified JsSIP registrar works without problem.<br>
+</p>
+
+
+<p>
+<h4>Let's summarize the recommendations</h4>
+<ul>
+
+<li>Use REGISTER expries not less than 140 seconds (preferably 600 seconds)</li>
+<li>Use websocket keep alive pings with an interval of 10..60 seconds.</li>
+<li>Use timerThrottlingBestEffort=true</li>
+<li>Listen visibilitychange event and for hidden page do not use timers.</li>
+<li>Optionally for Chrome when page is hidden, play an almost inaudible beep sound every 25 seconds.</li> 
+</ul>
+</p>
+
+<h2>Supported browsers</h2>
+<h4>Desktop browsers</h4>
+<p>
+In the current release, the WebRTC Client SDK supports:<br>
+<ul>
+<li>Google Chrome for Windows and Linux</li>
+<li>Browsers built in Chromium base: new Microsoft Edge, Opera and others</li>
+<li>Mozilla Firefox</li>
+<li>Apple Safari for Mac</li>
+</ul>
+</p>
+
+
+<h4>Mobile browsers (partial support)</h4>
+<p>
+For mobile phones, it is preferable to use the AudioCodes native WebRTC SDK.<br>
+However, Web WebRTC SDK also can be used (with some limitations).
+</p>
+
+<p>
+In the current release, the WebRTC Client SDK partially supports:<br>
+<ul>
+<li>Chrome for Android</li>
+<li>iOS Safari for IPhone</li>
+</ul>
+</p>
+
+<p>
+For Chrome for Android and iOS Safari for IPhone the sound is played on bottom loudspeaker,
+instead of top loudspeaker (acts as earpiece).
+<br>
+
+It cannot be reassigned, because WebRTC API does not expose the top loudspeaker as an available output device.<br>
+(See navigator.mediaDevices.enumerateDevices())<br>
+This problem can be solved if you connect external headset to the mobile phone.
+</p>
+
+<p>
+<h5>Chrome for Android limitations</h5>
+<ul>
+<li>
+The sound is played on bottom loudspeaker.
+</li>
+<li>
+Notification API is not implemented (at least in simple form), so there is not incoming call notification.<br>
+</li>
+<li>
+Screen Sharing is not implemented.<br>
+</li>
+<li>
+Video call problem: the call works, but browser crashed after the call termination.
+</li>
+</ul>
+</p>
+
+<p>
+<h5>iOS Safari limitations</h5>
+<ul>
+<li>
+The sound is played on bottom loudspeaker.
+</li>
+<li>
+Notification API is not implemented, so there is not incoming call notification<br>
+</li>
+<li>
+Screen Sharing is not implemented.<br>
+</li>
+<li>
+Еvent "beforeunload" is not implemented, so after page reloading phone cannot restore call,<br>
+cannot rise priority of previously connected SBC and send SIP un-REGISTER
+</li>
+<li>
+Video call problems:<br>
+
+Video stream from the camera (local video stream) sometimes works, and sometimes it does not (shown as a black square).<br>
+ 
+If you open the 2nd video call (in multi-call phone) then the video from the first one stops working (a black square is shown)
+</li>
+
+</ul>
+</p>
+
+<p>
+<h4>Notes about Apple Safari for Mac</h4>
+<ul>
+<li>Since release 1.9 SDK works with Safari 13 without webrtc adapter<br>
+Previous SDK releases works only with webrtc adapter</li>
+<li>WebRTC can be used starting version 12 of the browser, recommended latest version 14</li>
+</ul>
+<p>
+
+
+<h2>Developer's note. JavaScript console log</h2>
+<p>To open the JavaScript console follow the steps below:<br>
+ In Chrome and Firefox press: Ctrl-Shift-I to open dev tools, and click to console tab.<br>
+ In Safari press: Option(Alt)-Command-I, and click to console tab.<br>
+ Note: should be enabled "Show develop menu in menu bar" in "Safari/Preferences/Advanced"<br>
+</p>
+
+<p>
+<strong>Chrome console log settings</strong><br>
+To open the console: press Ctrl-Shift-I, click on the console tab.<br>
+Click on gear icon on top:<br>
+Disable 'Preserve log'.<br>
+Click on 'All levels' and enable: Info, Warnings, Errors.<br>
+To close console settings click again on gear icon.
+<br>
+<br>
+Click on 'Customize and control DevTools' icon (above gear icon)<br>
+Click on settings<br>
+In 'Console' section:<br>
+Enable 'Show timestamps' and 'Group similar'<br>
+To close settings click on X icon at top<br>
+</p>
+<p>
+<strong>About "Verbose" log level</strong><br>
+Using this level, problems with your certificates might be found,
+violations of the JavasSript standard, misuse of Browser API, etc.<br>
+If possible, it is worth correcting the problems found, but not all of them can be fixed.<br>
+Therefore, this mode is recommended for debugging, but not for general use.
+</p>
+<p>
+<strong>Firefox console log settings</strong><br>
+To open the console: press Ctrl-Shift-I, click on the console tab<br>
+Disable 'Persist Logs'.<br>
+Click on the 'Filter output' icon by the text field, Enable: Errors, Warnings, Logs and Info<br>
+Click on the 'Filter output' icon again to close the panel.<br>
+Click the gear icon located at the top of the console's right-hand side;
+the 'Toolbox options' is seen in the in the tooltip.
+Under in 'Web Console', enable 'Enable timestamp'.<br>
+To close console: press: Ctrl-Shift-I.
+</p>
+
+<p>
+<strong>Safari console log settings</strong><br>
+To open the console: press Option(Alt)-Command-I, click on the console tab<br>
+Enable 'All'.<br>
+<br>
+To save console log to a file:<br>
+<ul>
+<li>Select a row from the console log (be sure not to highlight any text since that will change your context menu)</li>
+<li>use Command + A to select all rows</li>
+<li>Right click and select 'save selected'. Save the file to your computer.</li>
+</ul>
+To close the console use: Option(Alt)-Command-I
+</p>
+
+
+<p>
+<strong>About 'Preserve log' or 'Persist Logs' flag</strong><br>
+If the flag is disabled, the console log will be cleared after page reloads.<br>
+Generally this will be the preferred setting since it helps keep the log size to a minimum.<br>
+<br>
+Enable the flag when you want to see the log before and after reloading a page.<br>
+Remember to manually clear the console logs before testing.
+</p>
+
+
+<h2>Developer's note. WebRTC adapter</h2>
+
+<p>
+The adapter in the following link is an open source JavaScript solution.<br>
+See <a href="https://webrtcglossary.com/adapter-js/">webrtc adapter description</a><br>
+
+The WebRTC adapter is not included in the SDK, and may be added by the developer.<br>
+It can be downloaded from: <a href="https://webrtc.github.io/adapter/adapter-latest.js">adapter-latest.js</a><br>
+</p>
+
+<p>
+Since SDK 1.9 we stopped using obsolete WebRTC API:<br>
+- event "addStream"<br>
+- RTCConnection getLocalStreams()<br>
+- RTCConnection getRemoteStreams()<br>
+<br>
+The methods are not implemented in Safari 13, and added by webrtc adapter.<br>
+Тherefore, our previous SDK releases do not work with Safari without webrtc adapter.
+</p>
+
+<p>
+Now webrtc adapter usage is optional for all supported browsers.<br>
+As you can see we do not use it in our phone examples.<br>
+</p>
+
+<h2 id="debugging_javascript">Developer's note. Debugging JavaScript code</h2>
+<p>Let's use our 'check for available devices' example.<br>
+In chrome open dev tools, and select sources.<br>
+Select file phone.js<br>
+Set breakpoint in line 48. (by clicking in the line's number)<br>
+Reload page. Now JavaScript execution will break in line 48<br><br>
+Press the 'step over next function call' serveral times in the debugger<br><br>
+Check the value of some variables, then resume script execution.<br><br>
+The same can be done in Mozilla's Firefox browser.<br>
+These types of tips and knowledge can assist you in phone debugging.<br><br>
+When you updating the phone's code on a website,<br>
+you should clear browser cache and reload (in Chrome/Firefox press: Ctrl+F5)</p>
+
+<h2 id= "chrome_local_overrides">Developer's note. Chrome local overrides</h2>
+<p>This option can aid you with general convenience in some tasks.<br>
+e.g. You're interested in taking one of the examples from our website and change some of
+its lines of code.<br>
+
+<p>Without local overrides, you would have to create your own site, copy this example to it,
+and change something in it.</p>
+
+<p>Using local overrides you can accomplish this using an example from our site, and the changes
+you've made are locally made to your Chrome browser with the help of Chrome's local overrides.<br>
+To know more about how they're used, please see: <a href="https://glebbahmutov.com/blog/local-overrides">local overrides</a>
+</p>
+
+<h2>Developer's note. About STUN protocol</h2>
+<p>For WebRTC - STUN protocol is critical and WebRTC cannot work without it.</p>
+<p>The STUN protocol is usable when your client is connected to a network using NAT.<br>
+In a case when the client communicates with an external internet,
+NAT convert its IP and port to another IP and port so the client can't know how it is seen
+from external internet (which IP and port)<br>
+To check it, the client sends a request to a STUN server.<br>
+The STUN server will send a response where it will write which IP and port was used in request.</p>
+<p>Before establishing a connection, the WebRTC client must create an SDP offer that include all posssible phone connections IPs and ports
+prepared by ICE Gathering.<br>
+It takes all the IP available on the computer,then sends STUN requests to STUN and TURN servers 
+(STUN and TURN are optional and can be specified in the configuration).</p>
+<p>For a WebRTC phone, you may use Google's STUN server: stun.l.google.com:19302 (Pay attention to the DNS as it returns more than one IP)<br>
+Note: Mediant SBC works without STUN servers.<br>
+Note: It is not recommended to use free Google STUN server for production.<br>
+No one guarantees that it will work, so use it only for testing.
+</p>
+<p>If a corporative firewall disables the STUN protocol, the browser cannot receive responses
+from the STUN server.</p>
+<p>You can see ICE gathring using the Wireshark sniffer with the filter 'stun', as the browser sends STUN requests,
+ and does not receive responses.</p>
+<p><a href="https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/">
+Let's use this test, to see how long it takes in your browser</a></p>
+<p>
+In the simple case, when the computer has one IP and STUN protocol is allowed in firewall, it takes less than a second.
+</p>
+<p>
+However, consider another case: the computer has two IPs: one from a home Internet provider, 
+and the other is VPN of our company.
+Suppose our organization's farevall is blocking the STUN protocol.<br>
+During ICE gathering phone will send STUN requests from all available IPs.<br>
+In this case, ICE gathering will take 40 seconds for the Chrome browser,
+because during VPN IP checking, the browser will try to connect to the STUN server again and again.<br>
+Therefore, we should set ICE gathering timeout to meet some reasonable time (a few seconds).
+</p>
+
+<p>WebRTC also uses the STUN protocol for other purposes such as:<br>
+ checking if the media session is alive.
+</p>
+<p>A WebRTC client sends an RTP stream to the SBC server IP and port.<br>
+It will periodically send STUN requests to SBC with the same IP and port used for the open RTP session.<br>
+If during the call the request is not responded to,
+the client will decide that the media connection has been lost.<br>
+<p>
+On the firewall, you’ll have to allow inbound STUN requests for your SBC server
+as well with a UDP port range (the same port range that the SBC uses for RTP sessions)
+</p>
+<p>
+If your firewall allows STUN  for the STUN server,
+but not for the SBC, your phone will open a connection,
+work for some time (tens of seconds) and then the call will close.
+</p>
+
+
+<h2>Developer's note. Bypassing the corporate firewall</h2>
+<p>
+The following is most important when a WebRTC phone is hosted in an organization’s intranet (private IP network),
+and the SBC is hosted in the internet (e.g. Amazon’s Cloud services).
+</p>
+<p>The organization's firewall and NAT between the local network and the internet can cause problems in this type of set-up</p>
+<p>&nbsp;</p>
+<ol>
+<li>SIP communication between browser and SBC:
+<p>SBC receives a SIP connection in a secure websocket, using port <strong>443</strong>. <br>It's the default secure websocket port that is also used for HTTPS so the port is enabled in most firewalls.</p>
+</li>
+<li>STUN communication between a browser and the STUN server:<br>
+Note: this STUN communication is optional. To disable it, set empty values for ICE server lists in the phone’s configuration.
+</p>
+<p>Before starting an outgoing call or answering an  incoming one, WebRTC runs ICE gathering (to check computer IPs)<br> The browser will send a STUN binding request to the STUN server.<br> We use google open STUN server: stun.l.google.com</p>
+<p>The firewall must allow STUN communication between the browser and the external STUN server.</p>
+</li>
+<li>STUN and DTLS-SRTP communication between the browser and the SBC:<br>
+<p>Before starting  an RTP transmission, the browser checks the future RTP channel:<br>
+ It sends a STUN binding request to the SBC using the same ports it will use for RTP.<br>
+ If the SBC responds with a STUN response, the browser starts sending RTP packets.
+ After the communication is established, the browser periodically sends STUN requests to check if the RTP channel is alive,
+ so the firewall must allow STUN and RTP communication between your browser and SBC</p>
+</li>
+</ol>
+<p>&nbsp;</p>
+<p>For RTP communication the browser uses WebRTC API's UDP ports.</p>
+<p>As this can be an issue, we'll expand on it below.<br>
+</p>
+<p><strong>WebRTC API designers don't provide an API to set RTP port range !</strong></p>
+<p>
+To use WebRTC phone you must ask your IT security enable inbound RTP/STUN protocols for all UDP ports.
+</p>
+<p>If using Chrome for business, you can set the port range by Chrome corporative policy.<br>
+(see&nbsp;<a href="https://www.chromium.org/administrators/policy-list-3#WebRtcUdpPortRange">WebRtcUdpPortRange</a>)
+</p>
+
+<h2>Developer's note. Setting speaker and microphone in Windows</h2>
+<p>
+In order for the phone to work, you must properly configure the microphone and speaker for the browser.
+</p>
+<h4>Check speaker</h4>
+<p>
+Open the site: youtube.com and try to listen to any song.<br>
+If you hear it, your speaker is OK.<br>
+Otherwise open the Windows "Control Panel", select "Manage Audio Devices",
+click the "Playback" tab and there you will be able to select the default device for playback.
+Now repeat the "youtube" test.
+</p>
+<h4>Check microphone</h4>
+<p>
+Open the Windows "Control Panel", select "Manage Audio Devices",
+click on the "Recording" tab and select default device.<br>
+Say something into the microphone and and watch the green bar for activity.
+</p>
+<p>
+You can also select a microphone internally when using Chrome as your browser.
+<br>
+Call someone and after the call is established,
+click the 'camera' icon in browser address line, then
+select proper microphone and camera devices for future usage.
+</p>
+
+
+<h2>About the JsSIP library used in this project</h2>
+<p>
+HTML 5 WebRTC API supports audio and video encoding/decoding, SRTP, and SDP,
+but misses the SIP protocol.<br>
+"JsSIP" is an open source JavaScript library that provides SIP via a websocket protocol.<br>
+It internally uses the WebRTC API, and is intended to build JavaScript WebRTC phones.
+</p>
+<p><a href="http://www.jssip.net">The official jssip site</a></p>
+<p><a href="https://github.com/versatica/JsSIP">The JavaScript source code</a></p>
+<h2>JsSIP license information</h2>
+<p>
+
+</p>
+<pre>
+Name: JsSIP
+Author: José Luis Millán <jmillan@aliax.net>
+Core Developer: Iñaki Baz Castillo <ibc@aliax.net>
+Copyright (c) 2012-2015 José Luis Millán - Versatica <https://github.com/versatica/>
+
+
+License: The MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</pre>
+
+
+<h2>Phone examples</h2>
+<p><a href="3.simple_phone">Run simple phone</a></p>
+<p><a href="4.phone_prototype">Run phone prototype</a></p>
+<p><a href="5.phone_prototype_aam">Run phone prototype with answering machine</a></p>
+<p><a href="6.phone_prototype_oauth">Run phone prototype with OAuth2</a></p>
+<p><a href="7.phone_prototype_acd">Run phone prototype with ACD</a></p>
+<p><a href="8.multi_call_phone_prototype">Run multi call phone prototype</a></p>
+<p><a href="9.phone_prototype_citrix">Run Citrix desktop phone prototype</a></p>
+</body>
+</html>

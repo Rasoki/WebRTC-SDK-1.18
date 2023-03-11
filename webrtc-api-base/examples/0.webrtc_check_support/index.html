@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!--
+   Tutorial.
+   Check if this browser supports WebRTC API
+-->
+<html>
+
+<head>
+    <title>Tutorial. Check devices</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+
+<body onload="documentIsReady()">
+    <!-- 
+      Check that browser is not MS Internet Explorer (IE)
+      
+      1. IE doesn't support body onload callback, so documentIsReady() will not be called.
+      2. IE doesn't support WebRTC.
+      -->
+    <script>
+        var ua = window.navigator.userAgent;
+        if (ua.indexOf('MSIE ') > 0 || ua.indexOf('Trident/') > 0) {
+            alert("Internet Explorer is not supported. Please use Chrome or Firefox");
+        }
+    </script>
+
+    <!-- Phone script -->
+    <script src="phone.js"></script>
+
+    <!--  HTML components of simple GUI -->
+    <div id="status_line">
+    </div>
+</body>
+
+</html>

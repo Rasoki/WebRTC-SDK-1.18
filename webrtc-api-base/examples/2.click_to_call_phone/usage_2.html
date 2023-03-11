@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!-- 
+   Tutorial 
+   Click-to-call example (with HTML form)
+   
+   Use form to set parameters of the URL.
+   Then go to the 'click to call' phone page
+
+   This page can be in http or https site.
+   The phone.html page can be only in the https site.
+   -->
+
+<html>
+
+<head>
+    <link rel="icon" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+        function documentIsReady() {
+            document.getElementById('my-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                let callTo = document.querySelector('input[name="callTo"]').value.trim();
+                if (callTo === '') {
+                    guiError("Please enter user name");
+                } else {
+                    // Set SBC server address. For testing only.
+                    let server = document.querySelector('input[name="server"]').value.trim();
+					// Can be used absolute or relative path
+                    //window.location.assign('https://webrtcdemo.audiocodes.com/sdk/webrtc-api-base/examples/2.click_to_call_phone/phone.html?call=' + callTo + '&server=' + server);
+                    window.location.assign('phone.html?call=' + callTo + '&server=' + server);
+                }
+            });
+        }
+
+        function guiError(text) {
+            guiStatus(text, 'Pink');
+        }
+
+        function guiStatus(text, color) {
+            let line = document.getElementById('status_line');
+            line.setAttribute('style', `background-color: ${color}`);
+            line.innerHTML = text;
+        }
+    </script>
+</head>
+
+<body onload="documentIsReady()">
+    <div id="status_line">
+    </div>
+
+    <form id="my-form">
+        Server: <input type="text" size=26 name="server" placeholder="SBC server address" title="For testing only. Enable change SBC address" value="wss://webrtclab.audiocodes.com">
+        <br><br> Call to: <input type="text" size=26 name="callTo" placeholder="user name or phone number" title="callee user name or phone number"><br>
+        <br>
+        <input type="submit" value="Click to call">
+    </form>
+</body>
+
+</html>

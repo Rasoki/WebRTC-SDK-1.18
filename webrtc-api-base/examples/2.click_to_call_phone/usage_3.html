@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<!--
+  Tutorial  
+  Click to call example (with speach recognition/synthesis)
+  
+  Use speach recognition to spell phone number,
+  and speach synthesis to build simple dialog.
+  
+  Not so practical, but amusing.
+  
+  Currently works only in desktop Chrome.
+  Can be used other languages: Spanish, German, French, Russian, etc.
+  See: https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API
+  
+  This page should be in HTTPS server.
+-->
+<html>
+
+<head>
+    <link rel="icon" href="favicon.png">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script>
+        let number = '';
+        let recognition = null;
+
+        function listen(audiostart = null) {
+            return new Promise((resolve, reject) => {
+                recognition.start();
+                if (audiostart !== null)
+                    recognition.onaudiostart = audiostart;
+                recognition.onresult = (e) => {
+                    resolve(e.results[0][0].transcript);
+                }
+                recognition.onerror = (e) => {
+                    reject(e.error);
+                }
+            });
+        }
+
+        function speak(sentence) {
+            let utterance = new SpeechSynthesisUtterance(sentence);
+            speechSynthesis.speak(utterance);
+            return new Promise((resolve, reject) => {
+                utterance.onend = () => resolve();
+                utterance.onerror = e => {
+                    reject(e);
+                }
+            });
+        }
+
+        function shutUp() {
+            if (speechSynthesis.speaking)
+                speechSynthesis.cancel();
+        }
+
+        function documentIsReady() {
+            try {
+                recognition = new webkitSpeechRecognition();
+            } catch (e) {}
+            if (recognition === null) {
+                guiError('Missed webkit speach recognition. Please use desktop Chrome');
+                return;
+            }
+
+            if (document.location.protocol === 'http:') {
+                guiError('This demo have to use HTTPS server');
+                return;
+            }
+            document.getElementById('btn_spell').onclick = () => {
+                listen(() => guiInfo('Please speak'))
+
+                .then(n => {
+                        console.log('Recognized: ', n);
+                        n = n.replace(/[\s-]+/g, '');
+                        n = n.replace(/zero/g, '0');
+                        n = n.replace(/one/g, '1');
+                        n = n.replace(/two/g, '2');
+                        n = n.replace(/three/g, '3');
+                        n = n.replace(/four/g, '4');
+                        n = n.replace(/five/g, '5');
+                        n = n.replace(/six/g, '6');
+                        n = n.replace(/seven/g, '7');
+                        n = n.replace(/eight/g, '8');
+                        n = n.replace(/nine/g, '9');
+                        n = n.replace(/[\s-]+/g, '');
+                        number = n.toLowerCase();
+                        console.log('Result: ', number);
+                        guiInfo(number);
+                        return speak('Phone number is ' + number);
+                    })
+                    .catch(e => {
+                        console.log('error', e);
+                    });
+            }
+
+            document.getElementById('btn_call').onclick = () => {
+                shutUp();
+                if (number === '') {
+                    speak('You forget to spell a phone number')
+                        .catch(e => {
+                            console.log('error', e);
+                        });
+                } else {
+                    speak('calling')
+                        .then(() => {
+                            window.location.assign('phone.html?call=' + number);
+                        })
+                        .catch(e => {
+                            console.log('error', e);
+                        });
+                }
+
+            }
+        }
+
+        function guiError(text) {
+            guiStatus(text, 'Pink');
+        }
+
+        function guiWarning(text) {
+            guiStatus(text, 'Gold');
+        }
+
+        function guiInfo(text) {
+            guiStatus(text, 'Aquamarine');
+        }
+
+
+        function guiStatus(text, color) {
+            let line = document.getElementById('status_line');
+            line.setAttribute('style', `background-color: ${color}`);
+            line.innerHTML = text;
+        }
+    </script>
+</head>
+
+<body onload="documentIsReady()">
+    <div id="status_line">
+    </div>
+    <button id="btn_spell" title="Please press the button and spell phone number or user name">Spell phone number</button>
+    <br>
+    <br>
+    <br>
+    <button id="btn_call" title="Please check recognized phone number. If it's correct, press the button" >Call to the phone number</button>
+</body>
+
+</html>

@@ -1,0 +1,95 @@
+Phone prototype with OAuth2 testing plan.
+
+1. Standard usage
+
+1.1	Starts client.
+Check javascript console logs:
+    In current keycloak settings access token is valid during 600 seconds.
+    Client should each 10 minutes update access token, and use it to send next SIP REGISTER
+    This test take 25..35 minutes.
+
+1.2 Let client send wrong token value in the first REGISTER, or INVITE
+    Check logs (SBC should answer 401 to REGISTER with wrong token value)
+    
+    To enable the test mode, open console, and type:
+      localStorage.setItem('authTests', 'r1 i1'); 
+
+    To disable the test mode, open console, and type:
+    localStorage.removeItem('authTests');
+
+    Tests: user, r1, r0, i1, i0 see description in tutorial.html    
+    
+1.3 Call to other user. 
+    Check that in INVITE used Authorization with token.
+   
+1.4 Hold/Uhnold call.
+    Check that in re-INVITE don't used Authorization.
+    Hangup the call.
+
+2. Network disconnection during client usage.
+2.1 Starts client.
+    Check that it sent REGISTER
+    Disconnect computer from network (disable network adapter)   
+    Connect computer to internet (enable network adapter)
+    Check that client re-establish connection with SBC
+    Check that after 10 minutes, update token will successfully update token
+    (so it will re-establish connection with keycloak server)
+   
+2.2 Change computer connection (disable local network connection and enable DMZ or Wifi)
+    Do the same as 2.1, but instead disable/enable the same network interface.
+    Disable one interface, and enable other.
+    (for example disable local LAN, and enable DMZ or WiFi interface)    
+   
+3. Terminate keycloak session during client usage.
+
+3.0 Connect to keycloak admin console and terminate keycloak session.
+   
+   A. Select user
+   
+   via 'Manage Users'
+     In the left menu: click Manage Users
+     Press button: Show all users
+     Find user by name. Click to id of the user.
+
+   or via 'Manage Sessions'   
+     In left menu click Manage Sessions
+     On top click client: 'WebRTCDemo'
+     On top right click 'Show sessions'
+     Find user by name, click user name.
+ 
+   B. Logout session
+    Press 'Session' on top
+    Select some session and press 'Logout'
+
+3.1 Terminate keycloak session during client registration sequence
+   Start client.
+   Terminate keycloak session.
+   Wait next update token.
+   In the case next update of access token will fail, 
+   and user will be asked re-type user name and password.
+   Phone HTML page will be switched to keycloak authentication HTML page.
+   Check that next update token will be successful
+
+3.2 Terminate keycloak session when client has open call.
+   Open call (and don't hangup it).
+   Terminate keycloak session of tested user.
+   Wait until next update token will be called.
+   In the case update token will fail, but switch to registration page will be postponed until the call termination.
+   If call duration > 10 minutes, can be seen that next REGISTER will failed, because token is obsolete and don't updated.
+   Try to connect tested user from other phone. SBC should answer 404 ('Not found')
+   Terminate the call, check that user will be asked re-type user name and password.
+   
+   
+3.3. Test how client work with entering user name and password.
+   According keycloak settings entering user name and password is rare event.
+   (for example one time in day or week)
+   
+   Logout in client: press settings, and press 'logout' button.
+   or  terminate user session via keycloak admin console.
+   
+   Client will asked enter user name and password.
+   Enter user name and password.
+   Check that client is successfully registered in SBC.
+   Reload phone page. Now client will not ask user name & password
+   Stop the client.
+   Start the client again. (name & pasword should not be asked)
